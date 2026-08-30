@@ -1,0 +1,59 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+import { describe, expect, it } from "vitest";
+
+const pkgRoot = resolve(import.meta.dirname, "..");
+
+/**
+ * Migration dry-run: every SQL file in migrations/ and policies/ must apply
+ * cleanly, in order, to an empty Postgres. Stubs the Supabase auth.uid()
+ * function that RLS policies reference.
+ */
+describe("migrations", () => {
+  it("apply cleanly to an empty database", async () => {
+    const db = new PGlite();
+    await db.exec(`
+      create schema if not exists auth;
+      create or replace function auth.uid() returns uuid
+        language sql stable as 'select null::uuid';
+      create role authenticated;
+      create role service_role;
+    `);
+    const files = ["migrations", "policies"]
+      .flatMap((dir) =>
+        readdirSync(resolve(pkgRoot, dir))
+          .filter((f) => f.endsWith(".sql"))
+          .map((f) => resolve(pkgRoot, dir, f)),
+      )
+      .sort();
+    for (const file of files) {
+      await db.exec(readFileSync(file, "utf8"));
+    }
+
+    const { rows } = await db.query<{ tablename: string }>(
+      "select tablename from pg_tables where schemaname = 'public' order by tablename",
+    );
+    expect(rows.map((r) => r.tablename)).toEqual([
+      "agent_job",
+      "candidate",
+      "cost_record",
+      "event",
+      "org",
+      "prompt_version",
+      "source_record",
+      "suppression",
+      "user",
+    ]);
+
+    const rls = await db.query<{ relname: string; relrowsecurity: boolean }>(
+      `select relname, relrowsecurity from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relkind = 'r'`,
+    );
+    for (const row of rls.rows) {
+      expect(row.relrowsecurity, `${row.relname} must have RLS enabled`).toBe(true);
+    }
+    await db.close();
+  });
+});

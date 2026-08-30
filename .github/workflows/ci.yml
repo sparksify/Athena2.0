@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # Public values (publishable key); secrets never live here.
+  NEXT_PUBLIC_SUPABASE_URL: https://baaddaravxmnevmovpad.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_-1MBd5Ra10V5fNoNZKHihQ_LoYMRIqY
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Migration dry-run
+        run: pnpm --filter @athena/db test
+      - name: Tests
+        run: pnpm --filter @athena/core test
+      - name: Build
+        run: pnpm build

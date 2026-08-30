@@ -1,0 +1,25 @@
+{
+  "name": "@athena/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "trigger dev",
+    "deploy": "trigger deploy"
+  },
+  "dependencies": {
+    "@athena/contracts": "workspace:*",
+    "@athena/core": "workspace:*",
+    "@athena/db": "workspace:*",
+    "@athena/llm-anthropic": "workspace:*",
+    "@trigger.dev/sdk": "^4.5.14",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "trigger.dev": "^4.5.14",
+    "typescript": "^5.9.3"
+  }
+}
