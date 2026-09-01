@@ -8,7 +8,7 @@ export function parseCsv(text: string): Record<string, string>[] {
   let field = "";
   let row: string[] = [];
   let inQuotes = false;
-  const src = text.replace(/^﻿/, ""); // strip BOM
+  const src = text.replace(/^\uFEFF/, ""); // strip BOM
 
   for (let i = 0; i < src.length; i++) {
     const ch = src[i]!;
