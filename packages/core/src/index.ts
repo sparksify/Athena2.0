@@ -11,6 +11,15 @@ export {
 } from "./ingest/import.js";
 export { runVerificationJob } from "./ingest/verification.js";
 export {
+  computeScore,
+  buildContexts,
+  scoreCandidates,
+  explainScore,
+  SCORE_VERSION,
+} from "./intelligence/score.js";
+export { FACTORS } from "./intelligence/factors/index.js";
+export type { ScoringContext, FactorResult, ScoringFactor } from "./intelligence/types.js";
+export {
   applyResolution,
   pendingReviews,
   AUTO_LINK_THRESHOLD,

@@ -38,6 +38,9 @@ export default async function JobsPage() {
           <p className="text-sm text-zinc-500">{user.email}</p>
         </div>
         <div className="flex items-center gap-2">
+          <a className="px-2 text-sm text-zinc-600 underline-offset-4 hover:underline" href="/candidates/scores">
+            Scores
+          </a>
           <a className="px-2 text-sm text-zinc-600 underline-offset-4 hover:underline" href="/candidates/review">
             Identity review
           </a>

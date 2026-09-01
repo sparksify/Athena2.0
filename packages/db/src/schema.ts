@@ -45,6 +45,7 @@ export const candidate = pgTable(
     state: text("state"),
     status: text("status").notNull().default("new"),
     mergedIntoId: uuid("merged_into_id"),
+    currentScore: integer("current_score"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -140,6 +141,89 @@ export const suppression = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("suppression_org_channel_identifier_idx").on(t.orgId, t.channel, t.identifier)],
+);
+
+// Derived facts with provenance; corrections supersede, never update.
+export const candidateAttribute = pgTable(
+  "candidate_attribute",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    key: text("key").notNull(),
+    value: jsonb("value").notNull(),
+    confidence: numeric("confidence"),
+    sourceRecordId: uuid("source_record_id").references(() => sourceRecord.id),
+    agentJobId: uuid("agent_job_id").references(() => agentJob.id),
+    supersededById: uuid("superseded_by_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("candidate_attribute_candidate_key_idx").on(t.candidateId, t.key)],
+);
+
+export const questionnaire = pgTable(
+  "questionnaire",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    sourceRecordId: uuid("source_record_id").references(() => sourceRecord.id),
+    kind: text("kind", { enum: ["cq_complete", "cq_partial"] }).notNull(),
+    answers: jsonb("answers").notNull().default({}),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("questionnaire_candidate_idx").on(t.candidateId)],
+);
+
+// Financial data in its own table so access control is a table policy.
+export const financialProfile = pgTable("financial_profile", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id),
+  candidateId: uuid("candidate_id").notNull().unique().references(() => candidate.id),
+  liquidityUsd: numeric("liquidity_usd"),
+  netWorthUsd: numeric("net_worth_usd"),
+  investableUsd: numeric("investable_usd"),
+  sourceRecordId: uuid("source_record_id").references(() => sourceRecord.id),
+  agentJobId: uuid("agent_job_id").references(() => agentJob.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One timeline: historical interactions from imports and live activity.
+export const interaction = pgTable(
+  "interaction",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    type: text("type", {
+      enum: ["email_sent", "email_reply", "sms", "call", "meeting", "presentation", "territory_check", "import_history"],
+    }).notNull(),
+    direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    consultantId: uuid("consultant_id"),
+    campaignId: uuid("campaign_id"),
+    payload: jsonb("payload").notNull().default({}),
+    sourceRecordId: uuid("source_record_id").references(() => sourceRecord.id),
+    providerRef: text("provider_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("interaction_candidate_time_idx").on(t.candidateId, t.occurredAt)],
+);
+
+export const scoreSnapshot = pgTable(
+  "score_snapshot",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    score: integer("score").notNull(),
+    version: integer("version").notNull(),
+    factors: jsonb("factors").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("score_snapshot_candidate_idx").on(t.candidateId, t.createdAt)],
 );
 
 export const identityReview = pgTable(
