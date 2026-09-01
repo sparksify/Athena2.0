@@ -89,15 +89,24 @@ Nick's priorities require, per consultant:
   time, show rate, intro→close, revenue, load), cross-filters by
   consultant/brand/campaign, stage-weighted pipeline value, time scopes.
 
-## Open questions for Steve / Nick (needed before Phase 7 build)
+## Decisions (Steve, 2026-09-01)
 
-1. **Take-back thresholds**: after how long with no first touch is a lead
-   reclaimed? Is the +24h manager escalation the last warning, with take-back
-   at e.g. 48h? Per-source differences (paid leads stricter)?
-2. **What does "reward" mean operationally** — more leads, first pick of hot
-   leads, leaderboard visibility, comp? (Affects routing weights only if it
-   is lead allocation.)
-3. Confirm the 8 stage names above are current, and whether "Talking to
-   Zors" / "D-Day" wording should carry into Athena 2.0's UI.
-4. Are Tim / Sophie / Claire / Rina agent identities carrying over, or do
-   they collapse into the single coordinator persona of Phase 7?
+1. **Take-back at 48h no-touch.** If a consultant has not made first contact
+   48 hours after assignment, the lead is reclaimed and rerouted. Escalation
+   ladder: nudge +1h → nudge +4h → manager +24h → take-back at 48h. The
+   take-back writes events, updates the assignment, and feeds routing.
+2. **Reward = lead allocation.** High performers get new leads, more leads,
+   and the best (highest-scored) leads. The routing engine's weights must
+   express this directly: performance (first-touch time, accept rate, show
+   rate) raises both volume and lead quality allocated.
+3. **Stage wording carries over verbatim**, including "Talking to Zors" and
+   "D-Day Scheduled", in the Athena 2.0 UI and GHL sync.
+4. **Tim, Sophie, Claire, and Rina are persistent named agents.** They carry
+   into the Athena 2.0 dashboard with their persona images. Data model
+   implication for Phase 7: the persona concept is plural — one row per
+   named agent (name, avatar image, mailbox where applicable), and
+   assignments/interactions attribute to the agent that made them, so the
+   ownership panel can show "Assigned by Sophie" with her avatar as today.
+
+Outstanding (non-blocking): Steve to supply the four persona avatar images
+(from the Athena 1.0 personas assets) so they ship with the Phase 7 UI.
