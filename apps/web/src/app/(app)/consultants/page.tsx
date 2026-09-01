@@ -1,0 +1,357 @@
+import { AgentAvatar } from "@/components/agent-avatar";
+import {
+  AGENTS, CONSULTANTS, KPIS, OWNERSHIP, SLA_COUNTS, SLA_LABEL, STAGES,
+  STAGE_MIX, TAKE_BACK_QUEUE, type SlaState,
+} from "./demo-data";
+
+export const metadata = { title: "Consultant Command — Athena" };
+
+/* Phase 7 preview: the accountability screen Nick asked for, rendered from
+   clearly-labeled demo fixtures. Live wiring (consultant/assignment/
+   opportunity tables, nudge timers, take-backs) lands with Phase 7. */
+
+const money = (n: number) =>
+  n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
+
+const SLA_BADGE: Record<SlaState, string> = {
+  on_track: "bg-emerald-500/15 text-emerald-400",
+  nudged: "bg-amber-500/15 text-amber-400",
+  escalated: "bg-orange-500/15 text-orange-400",
+  take_back: "bg-red-500/15 text-red-400",
+};
+
+const STAGE_COLORS = ["#6366F1", "#818CF8", "#38BDF8", "#22D3EE", "#2DD4BF", "#34D399", "#A3E635", "#F59E0B"];
+
+const AVATAR_GRADIENTS = [
+  "from-indigo-500 to-violet-600",
+  "from-cyan-500 to-sky-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-pink-500 to-rose-600",
+  "from-violet-500 to-fuchsia-600",
+];
+
+function Initials({ name, i }: { name: string; i: number }) {
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]}`}
+    >
+      {name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
+    </span>
+  );
+}
+
+function SlaBadge({ sla }: { sla: SlaState }) {
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${SLA_BADGE[sla]}`}>
+      {SLA_LABEL[sla]}
+    </span>
+  );
+}
+
+function ratePill(pct: number) {
+  return pct >= 90
+    ? "bg-emerald-500/15 text-emerald-400"
+    : pct >= 75
+      ? "bg-amber-500/15 text-amber-400"
+      : "bg-red-500/15 text-red-400";
+}
+
+export default function ConsultantsPreviewPage() {
+  const totalStage = Object.values(STAGE_MIX).reduce((a, b) => a + b, 0);
+  const num = "tabular-nums" as const;
+
+  return (
+    <main className="mx-auto max-w-[1400px] p-8">
+      {/* preview banner */}
+      <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+        <span className="font-semibold uppercase tracking-wider">Preview · demo data</span>
+        <span className="text-amber-200/70">
+          This is the Phase 7 accountability screen with fictional consultants and numbers. It goes
+          live when routing + accountability ship; the 48h take-back rule shown here is the real spec.
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Consultant Command</h1>
+          <p className="mt-1 text-sm text-[#8B95A7]">
+            Are consultants responding, booking, and moving people through the pipeline?
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          {["Today", "7 days", "30 days", "Lifetime"].map((s, i) => (
+            <span
+              key={s}
+              className={`rounded-lg border px-3 py-1.5 text-xs ${i === 3 ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-300" : "border-[#1E2635] bg-[#121826] text-[#8B95A7]"}`}
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* KPI row */}
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          { label: "Live opportunities", value: String(KPIS.liveOpportunities) },
+          { label: "Open pipeline", value: money(KPIS.pipelineValue) },
+          { label: "Median first touch", value: KPIS.medianFirstTouch },
+          { label: "Show rate", value: `${KPIS.showRate}%` },
+          { label: "SLA breaches (48h)", value: String(KPIS.slaBreaches48h), alert: KPIS.slaBreaches48h > 0 },
+          { label: "Take-backs (30d)", value: String(KPIS.takeBacks30d) },
+        ].map((k) => (
+          <div key={k.label} className="rounded-xl border border-[#1E2635] bg-[#121826] p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{k.label}</div>
+            <div className={`mt-1 text-2xl font-semibold ${"alert" in k && k.alert ? "text-red-400" : ""}`} style={{ fontVariantNumeric: num }}>
+              {k.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* executive summary */}
+      <section className="mt-6 rounded-xl border border-indigo-500/20 bg-gradient-to-r from-[#101A33] to-[#131A3A] p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Athena executive summary
+          </h2>
+          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+            Demo
+          </span>
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-[#C3CCDB]">
+          Good morning. {KPIS.liveOpportunities} live opportunities are in play worth {money(KPIS.pipelineValue)}.
+          Top consultant is Maria Alvarez — 31 active, 2h 10m median first touch, 78% show rate. Attention
+          required: Rolf Lindqvist has 2 assignments past the 48-hour no-touch wall; take-back and rerouting
+          will run automatically, and his allocation drops until response times recover.
+        </p>
+      </section>
+
+      {/* leaderboard + accountability */}
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+        <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Consultant performance
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="mt-3 w-full min-w-[680px] text-sm">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-wider text-[#64748B]">
+                  <th className="pb-2 font-semibold">Consultant</th>
+                  <th className="pb-2 font-semibold">Contacted</th>
+                  <th className="pb-2 font-semibold">Accept</th>
+                  <th className="pb-2 font-semibold">First touch</th>
+                  <th className="pb-2 font-semibold">Show</th>
+                  <th className="pb-2 font-semibold">Intro→close</th>
+                  <th className="pb-2 font-semibold">Revenue</th>
+                  <th className="pb-2 font-semibold">Load</th>
+                  <th className="pb-2 font-semibold">SLA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CONSULTANTS.map((cn, i) => {
+                  const overloaded = cn.load[0] > cn.load[1];
+                  return (
+                    <tr key={cn.name} className="border-t border-[#1A2130]">
+                      <td className="py-2.5">
+                        <span className="flex items-center gap-2.5">
+                          <Initials name={cn.name} i={i} />
+                          <span>
+                            <span className="block text-[#E7ECF3]">{cn.name}</span>
+                            <span className="block text-[11px] text-[#64748B]">{cn.city}</span>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{cn.contacted}</td>
+                      <td className="py-2.5">
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${ratePill(cn.acceptRate)}`} style={{ fontVariantNumeric: num }}>
+                          {cn.acceptRate}%
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>{cn.firstTouch}</td>
+                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{cn.showRate}%</td>
+                      <td className="py-2.5">
+                        <span className="flex items-center gap-2">
+                          <span className="h-1 w-14 rounded-full bg-[#1B2333]">
+                            <span className="block h-1 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${Math.min(100, cn.introToClose * 5)}%` }} />
+                          </span>
+                          <span className="text-xs text-[#8B95A7]" style={{ fontVariantNumeric: num }}>{cn.introToClose}%</span>
+                        </span>
+                      </td>
+                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{money(cn.revenue)}</td>
+                      <td className={`py-2.5 ${overloaded ? "text-red-400" : "text-[#C3CCDB]"}`} style={{ fontVariantNumeric: num }}>
+                        {cn.load[0]} / {cn.load[1]}
+                      </td>
+                      <td className="py-2.5"><SlaBadge sla={cn.sla} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[11px] text-[#64748B]">
+            Routing rewards the top of this table: strong first-touch, accept and show rates earn new,
+            more, and higher-scored leads.
+          </p>
+        </section>
+
+        <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Assignment SLA
+          </h2>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {(Object.keys(SLA_COUNTS) as SlaState[]).map((k) => (
+              <div key={k} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
+                <div className="text-xl font-semibold" style={{ fontVariantNumeric: num }}>{SLA_COUNTS[k]}</div>
+                <div className="mt-1"><SlaBadge sla={k} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-[11px] text-[#64748B]">
+            Ladder: nudge +1h → nudge +4h → manager +24h → take-back at 48h.
+          </div>
+
+          <h2 className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Take-back queue (48h rule)
+          </h2>
+          <ul className="mt-2 space-y-2 text-sm">
+            {TAKE_BACK_QUEUE.map((r) => {
+              const past = r.hoursSinceAssign >= 48;
+              return (
+                <li key={r.lead} className="rounded-lg border border-[#1E2635] bg-[#0F1522] px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[#E7ECF3]">{r.lead}</span>
+                    <span className={`shrink-0 text-xs font-semibold ${past ? "text-red-400" : "text-amber-400"}`} style={{ fontVariantNumeric: num }}>
+                      {past ? "reclaiming now" : `${48 - r.hoursSinceAssign}h left`}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
+                    <span className="truncate">{r.consultant} · no first touch in {r.hoursSinceAssign}h</span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      <AgentAvatar name={r.agent} size={14} /> {r.agent}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      </div>
+
+      {/* stage mix bar */}
+      <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">CRM stage mix</h2>
+          <span className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
+            {totalStage} opportunities in scope
+          </span>
+        </div>
+        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-[#1B2333]">
+          {STAGES.map((s, i) =>
+            STAGE_MIX[s] > 0 ? (
+              <div key={s} style={{ width: `${(STAGE_MIX[s] / totalStage) * 100}%`, backgroundColor: STAGE_COLORS[i] }} />
+            ) : null,
+          )}
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-x-2 gap-y-2 md:grid-cols-8">
+          {STAGES.map((s, i) => (
+            <div key={s} className="text-center">
+              <div className="text-sm font-semibold" style={{ fontVariantNumeric: num }}>{STAGE_MIX[s]}</div>
+              <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] uppercase tracking-wide text-[#64748B]">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: STAGE_COLORS[i] }} />
+                {s}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ownership + agents */}
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+        <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Consultant ownership
+          </h2>
+          <p className="mt-1 text-xs text-[#64748B]">
+            Who owns each visible opportunity, who assigned it, and whether it&apos;s moving.
+          </p>
+          <div className="mt-3 space-y-4">
+            {OWNERSHIP.map((group, gi) => (
+              <div key={group.consultant} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2.5">
+                    <Initials name={group.consultant} i={gi} />
+                    <span className="font-medium text-[#E7ECF3]">{group.consultant}</span>
+                  </span>
+                  <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-300" style={{ fontVariantNumeric: num }}>
+                    {group.leads.length} shown
+                  </span>
+                </div>
+                <ul className="mt-2 divide-y divide-[#1A2130]">
+                  {group.leads.map((l) => (
+                    <li key={l.email} className="grid grid-cols-2 items-center gap-2 py-2 md:grid-cols-[1.4fr_1fr_1fr_0.9fr_0.6fr]">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm text-[#E7ECF3]">{l.lead}</span>
+                        <span className="block truncate text-[11px] text-[#64748B]">{l.email}</span>
+                      </span>
+                      <span className="truncate text-xs text-[#8B95A7]">{l.brand}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-[#8B95A7]">
+                        <AgentAvatar name={l.agent} size={18} />
+                        <span className="truncate">Assigned by {l.agent}</span>
+                      </span>
+                      <span className="text-xs text-[#C3CCDB]">
+                        {l.stage}
+                        <span className="block text-[10px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
+                          {l.daysInStage}d in stage
+                        </span>
+                      </span>
+                      <span className="justify-self-start md:justify-self-end"><SlaBadge sla={l.sla} /></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">AI agents</h2>
+          <p className="mt-1 text-xs text-[#64748B]">
+            Persistent agents. Placeholder avatars — real persona images upload via admin later.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {AGENTS.map((a) => (
+              <li key={a.name} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
+                <div className="flex items-center gap-3">
+                  <AgentAvatar name={a.name} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[#E7ECF3]">{a.name}</span>
+                      <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Active
+                      </span>
+                    </div>
+                    <div className="truncate text-[11px] text-[#64748B]">{a.role}</div>
+                  </div>
+                </div>
+                <div className="mt-2.5 grid grid-cols-3 gap-2 border-t border-[#1A2130] pt-2.5 text-center">
+                  {[
+                    { v: a.handoffs.toLocaleString(), l: "Handoffs" },
+                    { v: a.repliesHandled.toLocaleString(), l: "Replies" },
+                    { v: String(a.activeAssignments), l: "Active" },
+                  ].map((m) => (
+                    <div key={m.l}>
+                      <div className="text-sm font-semibold" style={{ fontVariantNumeric: num }}>{m.v}</div>
+                      <div className="text-[9px] uppercase tracking-wide text-[#64748B]">{m.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </main>
+  );
+}

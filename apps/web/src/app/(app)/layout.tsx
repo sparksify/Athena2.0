@@ -26,6 +26,7 @@ const NAV: {
   label: string;
   icon: string;
   href?: string;
+  badge?: string;
   children?: { label: string; href: string }[];
 }[] = [
   { label: "Overview", href: "/", icon: "M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z" },
@@ -37,7 +38,7 @@ const NAV: {
   { label: "Import", href: "/ops/import", icon: "M12 3v12m0-12L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" },
   { label: "Conversations", icon: "M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" }, // Phase 6
   { label: "Opportunities", icon: "M12 21a9 9 0 110-18 9 9 0 010 18zm0-5a4 4 0 110-8" }, // Phase 7
-  { label: "Consultants", icon: "M10 11a4 4 0 100-8 4 4 0 000 8zM3 21v-1a7 7 0 0114 0v1M16 11l2 2 4-4" }, // Phase 7
+  { label: "Consultants", href: "/consultants", badge: "preview", icon: "M10 11a4 4 0 100-8 4 4 0 000 8zM3 21v-1a7 7 0 0114 0v1M16 11l2 2 4-4" }, // Phase 7 preview
   { label: "Appointments", icon: "M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 011 1v13a2 2 0 01-2 2H6a2 2 0 01-2-2V6a1 1 0 011-1z" }, // Phase 7
   { label: "Campaigns", icon: "M3 11l16-6v14L3 13v-2zm4 3v4a2 2 0 004 0v-3" }, // Phase 5
   {
@@ -101,6 +102,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               >
                 <NavIcon d={item.icon} />
                 {item.label}
+                {item.badge && (
+                  <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-400">
+                    {item.badge}
+                  </span>
+                )}
               </a>
             ) : (
               <span
