@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+/* Dark command-center theme (docs/design/dashboard-mockup.md) — deliberate
+   single-theme design; every surface painted explicitly. */
+:root {
+  color-scheme: dark;
+}
+
+input,
+select,
+textarea {
+  background-color: #0e1420;
+  color: #e2e8f0;
+}
+
+input::placeholder {
+  color: #64748b;
+}

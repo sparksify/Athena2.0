@@ -40,19 +40,19 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-lg border border-[#1E2635] bg-[#121826] p-8 shadow-sm">
         <h1 className="text-xl font-semibold">Athena</h1>
-        <p className="mt-1 text-sm text-zinc-500">Operator sign in</p>
+        <p className="mt-1 text-sm text-[#8B95A7]">Operator sign in</p>
         <div className="mt-6 space-y-3">
           <input
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            className="w-full rounded-md border border-[#2A3447] px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <input
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+            className="w-full rounded-md border border-[#2A3447] px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
             type="password"
             placeholder="Password"
             value={password}
@@ -60,20 +60,20 @@ export default function LoginPage() {
             onKeyDown={(e) => e.key === "Enter" && signIn()}
           />
           <button
-            className="w-full rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
+            className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
             onClick={signIn}
             disabled={busy || !email || !password}
           >
             Sign in
           </button>
           <button
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+            className="w-full rounded-md border border-[#2A3447] px-3 py-2 text-sm hover:bg-[#161D2B] disabled:opacity-50"
             onClick={signUp}
             disabled={busy || !email || !password}
           >
             Create account
           </button>
-          {message && <p className="text-sm text-red-600">{message}</p>}
+          {message && <p className="text-sm text-red-400">{message}</p>}
         </div>
       </div>
     </main>

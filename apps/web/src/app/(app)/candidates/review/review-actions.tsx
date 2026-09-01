@@ -27,14 +27,14 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
         {status === "pending" ? (
           <>
             <button
-              className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
               onClick={() => call("merge_candidates")}
               disabled={busy}
             >
               Merge
             </button>
             <button
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-md border border-[#2A3447] px-3 py-1.5 text-sm hover:bg-[#161D2B] disabled:opacity-50"
               onClick={() => call("reject_review")}
               disabled={busy}
             >
@@ -43,7 +43,7 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
           </>
         ) : (
           <button
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-50 disabled:opacity-50"
+            className="rounded-md border border-[#2A3447] px-3 py-1.5 text-sm hover:bg-[#161D2B] disabled:opacity-50"
             onClick={() => call("split_merge")}
             disabled={busy}
           >
@@ -51,7 +51,7 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
           </button>
         )}
       </div>
-      {error && <span className="max-w-56 text-right text-xs text-red-600">{error}</span>}
+      {error && <span className="max-w-56 text-right text-xs text-red-400">{error}</span>}
     </div>
   );
 }

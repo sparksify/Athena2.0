@@ -29,13 +29,13 @@ const REVIEW_SELECT = `id, score, method, status, created_at,
   candidate_b:candidate!identity_review_candidate_b_id_fkey(id, full_name, primary_email, primary_phone, city, state)`;
 
 function Card({ c }: { c: CandidateCard }) {
-  if (!c) return <div className="text-zinc-400">missing</div>;
+  if (!c) return <div className="text-[#64748B]">missing</div>;
   return (
     <div className="text-sm">
       <div className="font-medium">{c.full_name ?? "—"}</div>
-      <div className="text-zinc-500">{c.primary_email ?? "no email"}</div>
-      <div className="text-zinc-500">{c.primary_phone ?? "no phone"}</div>
-      <div className="text-zinc-400">
+      <div className="text-[#8B95A7]">{c.primary_email ?? "no email"}</div>
+      <div className="text-[#8B95A7]">{c.primary_phone ?? "no phone"}</div>
+      <div className="text-[#64748B]">
         {[c.city, c.state].filter(Boolean).join(", ") || "no location"}
       </div>
     </div>
@@ -70,23 +70,23 @@ export default async function ReviewPage() {
   return (
     <main className="mx-auto max-w-5xl p-8">
       <h1 className="text-2xl font-semibold">Identity review</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-[#8B95A7]">
         Probable duplicates (0.60–0.85 confidence) wait here for a human. Merges are
         non-destructive and can be split.
       </p>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold text-zinc-700">
+        <h2 className="text-sm font-semibold text-[#C3CCDB]">
           Pending ({pendingReviews.length})
         </h2>
         <div className="mt-2 space-y-3">
           {pendingReviews.map((r) => (
-            <div key={r.id} className="rounded-lg border border-zinc-200 bg-white p-4">
+            <div key={r.id} className="rounded-lg border border-[#1E2635] bg-[#121826] p-4">
               <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_1fr_auto]">
                 <Card c={r.candidate_a} />
                 <Card c={r.candidate_b} />
                 <div className="flex flex-col items-end gap-2">
-                  <span className="font-mono text-sm text-zinc-500">
+                  <span className="font-mono text-sm text-[#8B95A7]">
                     {Number(r.score).toFixed(2)} · {r.method}
                   </span>
                   <ReviewActions reviewId={r.id} status="pending" />
@@ -95,21 +95,21 @@ export default async function ReviewPage() {
             </div>
           ))}
           {pendingReviews.length === 0 && (
-            <p className="py-4 text-sm text-zinc-400">Nothing waiting for review.</p>
+            <p className="py-4 text-sm text-[#64748B]">Nothing waiting for review.</p>
           )}
         </div>
       </section>
 
       <section className="mt-10">
-        <h2 className="text-sm font-semibold text-zinc-700">Recent merges (splittable)</h2>
+        <h2 className="text-sm font-semibold text-[#C3CCDB]">Recent merges (splittable)</h2>
         <div className="mt-2 space-y-3">
           {mergedReviews.map((r) => (
-            <div key={r.id} className="rounded-lg border border-zinc-200 bg-white p-4">
+            <div key={r.id} className="rounded-lg border border-[#1E2635] bg-[#121826] p-4">
               <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_1fr_auto]">
                 <Card c={r.candidate_a} />
                 <Card c={r.candidate_b} />
                 <div className="flex flex-col items-end gap-2">
-                  <span className="font-mono text-sm text-zinc-500">
+                  <span className="font-mono text-sm text-[#8B95A7]">
                     {Number(r.score).toFixed(2)} · {r.method}
                   </span>
                   <ReviewActions reviewId={r.id} status="merged" />
@@ -118,13 +118,13 @@ export default async function ReviewPage() {
             </div>
           ))}
           {mergedReviews.length === 0 && (
-            <p className="py-4 text-sm text-zinc-400">No merges yet.</p>
+            <p className="py-4 text-sm text-[#64748B]">No merges yet.</p>
           )}
         </div>
       </section>
 
       <section className="mt-10">
-        <h2 className="text-sm font-semibold text-zinc-700">Flag a pair manually</h2>
+        <h2 className="text-sm font-semibold text-[#C3CCDB]">Flag a pair manually</h2>
         <ManualPairForm />
       </section>
     </main>

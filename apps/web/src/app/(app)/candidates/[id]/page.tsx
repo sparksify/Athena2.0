@@ -7,8 +7,8 @@ type Factor = { factor: string; points: number; reason: string };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
+    <section className="rounded-lg border border-[#1E2635] bg-[#121826] p-5">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-[#8B95A7]">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -68,7 +68,7 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{candidate.full_name ?? "Unnamed candidate"}</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-[#8B95A7]">
             {[candidate.primary_email, candidate.primary_phone, [candidate.city, candidate.state].filter(Boolean).join(", ")]
               .filter(Boolean)
               .join(" · ")}
@@ -78,8 +78,8 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
           <div className="text-4xl font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
             {candidate.current_score ?? "—"}
           </div>
-          <div className="text-xs text-zinc-500">reactivation score</div>
-          <span className="mt-1 inline-block rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-xs">
+          <div className="text-xs text-[#8B95A7]">reactivation score</div>
+          <span className="mt-1 inline-block rounded-full bg-[#1B2333] px-2 py-0.5 font-mono text-xs">
             {candidate.status}
           </span>
         </div>
@@ -88,18 +88,18 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Section title="Why we care">
           {factors.length === 0 ? (
-            <p className="text-sm text-zinc-400">Not scored yet.</p>
+            <p className="text-sm text-[#64748B]">Not scored yet.</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
                 {factors.map((f) => (
-                  <tr key={f.factor} className="border-b border-zinc-50 last:border-0">
-                    <td className="py-1 pr-2 font-mono text-xs text-zinc-500">{f.factor}</td>
-                    <td className={`w-10 py-1 text-right font-mono text-xs ${f.points > 0 ? "text-green-700" : f.points < 0 ? "text-red-700" : "text-zinc-400"}`}
+                  <tr key={f.factor} className="border-b border-[#161D2B] last:border-0">
+                    <td className="py-1 pr-2 font-mono text-xs text-[#8B95A7]">{f.factor}</td>
+                    <td className={`w-10 py-1 text-right font-mono text-xs ${f.points > 0 ? "text-green-400" : f.points < 0 ? "text-red-400" : "text-[#64748B]"}`}
                         style={{ fontVariantNumeric: "tabular-nums" }}>
                       {f.points > 0 ? `+${f.points}` : f.points}
                     </td>
-                    <td className="py-1 pl-3 text-zinc-600">{f.reason}</td>
+                    <td className="py-1 pl-3 text-[#A9B4C6]">{f.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -111,28 +111,28 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             {fin && (
               <>
-                <dt className="text-zinc-500">Liquidity</dt>
+                <dt className="text-[#8B95A7]">Liquidity</dt>
                 <dd className="font-mono">{money(fin.liquidity_usd)}</dd>
-                <dt className="text-zinc-500">Net worth</dt>
+                <dt className="text-[#8B95A7]">Net worth</dt>
                 <dd className="font-mono">{money(fin.net_worth_usd)}</dd>
               </>
             )}
-            <dt className="text-zinc-500">Questionnaire</dt>
+            <dt className="text-[#8B95A7]">Questionnaire</dt>
             <dd>{questionnaires?.length ? questionnaires.map((q) => q.kind).join(", ") : "none"}</dd>
             {(identifiers ?? []).map((i, idx) => {
               const ver = (i.email_verification as { result: string }[] | null)?.[0];
               return (
-                <div key={idx} className="col-span-2 flex justify-between border-t border-zinc-50 pt-1">
+                <div key={idx} className="col-span-2 flex justify-between border-t border-[#161D2B] pt-1">
                   <span className="font-mono text-xs">{i.value_normalized}</span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-[#8B95A7]">
                     {i.type}{ver ? ` · ${ver.result}` : i.type === "email" ? " · unverified" : ""}
                   </span>
                 </div>
               );
             })}
             {(attributes ?? []).map((a) => (
-              <div key={a.key} className="col-span-2 flex justify-between border-t border-zinc-50 pt-1">
-                <span className="text-zinc-500">{a.key}</span>
+              <div key={a.key} className="col-span-2 flex justify-between border-t border-[#161D2B] pt-1">
+                <span className="text-[#8B95A7]">{a.key}</span>
                 <span className="max-w-64 truncate text-right">{JSON.stringify(a.value)}</span>
               </div>
             ))}
@@ -141,13 +141,13 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
 
         <Section title="What happened">
           {(interactions ?? []).length === 0 && (links ?? []).length === 0 ? (
-            <p className="text-sm text-zinc-400">No history yet.</p>
+            <p className="text-sm text-[#64748B]">No history yet.</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {(interactions ?? []).map((i, idx) => (
-                <li key={idx} className="flex justify-between border-b border-zinc-50 py-1 last:border-0">
+                <li key={idx} className="flex justify-between border-b border-[#161D2B] py-1 last:border-0">
                   <span className="font-mono text-xs">{i.direction === "inbound" ? "←" : "→"} {i.type}</span>
-                  <span className="text-xs text-zinc-400">{new Date(i.occurred_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-[#64748B]">{new Date(i.occurred_at).toLocaleDateString()}</span>
                 </li>
               ))}
               {(links ?? []).map((l, idx) => {
@@ -156,12 +156,12 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
                   | { source_type: string; imported_at: string }
                   | null;
                 return (
-                  <li key={`s${idx}`} className="flex justify-between border-b border-zinc-50 py-1 last:border-0">
-                    <span className="text-zinc-600">
+                  <li key={`s${idx}`} className="flex justify-between border-b border-[#161D2B] py-1 last:border-0">
+                    <span className="text-[#A9B4C6]">
                       source record: <span className="font-mono text-xs">{sr?.source_type}</span>
-                      <span className="ml-1 text-xs text-zinc-400">({l.method}, {Number(l.confidence).toFixed(2)})</span>
+                      <span className="ml-1 text-xs text-[#64748B]">({l.method}, {Number(l.confidence).toFixed(2)})</span>
                     </span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-[#64748B]">
                       {sr ? new Date(sr.imported_at).toLocaleDateString() : ""}
                     </span>
                   </li>
@@ -173,15 +173,15 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
 
         <Section title="What happens next">
           <p className="text-sm">{nextAction}</p>
-          <p className="mt-2 text-xs text-zinc-400">
+          <p className="mt-2 text-xs text-[#64748B]">
             AI research notes and outreach recommendations arrive with Phase 5.
           </p>
-          <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">Recent events</h3>
+          <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#8B95A7]">Recent events</h3>
           <ul className="mt-1 space-y-0.5 text-xs">
             {(events ?? []).map((e, idx) => (
               <li key={idx} className="flex justify-between py-0.5">
                 <span className="font-mono">{e.type}</span>
-                <span className="text-zinc-400">{new Date(e.created_at).toLocaleString()}</span>
+                <span className="text-[#64748B]">{new Date(e.created_at).toLocaleString()}</span>
               </li>
             ))}
           </ul>

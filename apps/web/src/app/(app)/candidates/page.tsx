@@ -15,7 +15,7 @@ export default async function CandidatesPage() {
   return (
     <main className="mx-auto max-w-6xl p-8">
       <h1 className="text-2xl font-semibold">Candidates</h1>
-      <p className="mt-1 text-sm text-zinc-500">{data?.length ?? 0} candidates (top 2000 by score)</p>
+      <p className="mt-1 text-sm text-[#8B95A7]">{data?.length ?? 0} candidates (top 2000 by score)</p>
       <CandidatesTable rows={(data ?? []) as CandidateRow[]} />
     </main>
   );

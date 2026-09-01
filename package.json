@@ -21,6 +21,7 @@
     "@duckdb/node-api": "1.5.5-r.4",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.1",
+    "playwright-core": "^1.62.1",
     "tsx": "^4.23.13",
     "turbo": "^2.10.12",
     "typescript": "^5.9.3",

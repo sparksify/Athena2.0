@@ -48,25 +48,25 @@ export function ManualPairForm() {
   return (
     <div className="mt-2 flex max-w-2xl flex-wrap items-center gap-2">
       <input
-        className="min-w-56 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="min-w-56 flex-1 rounded-md border border-[#2A3447] px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         placeholder="candidate email A"
         value={emailA}
         onChange={(e) => setEmailA(e.target.value)}
       />
       <input
-        className="min-w-56 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        className="min-w-56 flex-1 rounded-md border border-[#2A3447] px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         placeholder="candidate email B"
         value={emailB}
         onChange={(e) => setEmailB(e.target.value)}
       />
       <button
-        className="rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 disabled:opacity-50"
+        className="rounded-md border border-[#2A3447] px-3 py-2 text-sm hover:bg-[#161D2B] disabled:opacity-50"
         onClick={flag}
         disabled={busy || !emailA || !emailB}
       >
         Flag as possible duplicate
       </button>
-      {message && <p className="w-full text-sm text-red-600">{message}</p>}
+      {message && <p className="w-full text-sm text-red-400">{message}</p>}
     </div>
   );
 }
