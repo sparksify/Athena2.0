@@ -1,14 +1,17 @@
 import { AgentAvatar, PersonAvatar } from "@/components/agent-avatar";
 import {
-  AGENTS, CONSULTANTS, KPIS, OWNERSHIP, SLA_COUNTS, SLA_LABEL, STAGES,
-  STAGE_MIX, TAKE_BACK_QUEUE, consultantAvatar, type SlaState,
+  AGENTS, CONSULTANTS, CONSULT_FUNNEL, KPIS, OWNERSHIP, SLA_COUNTS, SLA_LABEL,
+  STAGES, STAGE_MIX, TAKE_BACK_QUEUE, UPCOMING_CONSULTS, WEEKLY_CONSULT_TARGET,
+  consultantAvatar, type CqStatus, type SlaState,
 } from "./demo-data";
 
 export const metadata = { title: "Consultant Command — Athena" };
 
 /* Phase 7 preview: the accountability screen Nick asked for, rendered from
-   clearly-labeled demo fixtures. Live wiring (consultant/assignment/
-   opportunity tables, nudge timers, take-backs) lands with Phase 7. */
+   clearly-labeled demo fixtures. Reorganized 2026-09-01 around his consult-
+   first priorities: speed to consultation (assignment → completed consult),
+   3 real consults per consultant per week, and a CQ in hand before every
+   consult. Live wiring lands with Phase 7. */
 
 const money = (n: number) =>
   n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
@@ -18,6 +21,12 @@ const SLA_BADGE: Record<SlaState, string> = {
   nudged: "bg-amber-500/15 text-amber-400",
   escalated: "bg-orange-500/15 text-orange-400",
   take_back: "bg-red-500/15 text-red-400",
+};
+
+const CQ_BADGE: Record<CqStatus, { label: string; cls: string }> = {
+  received: { label: "CQ received", cls: "bg-emerald-500/15 text-emerald-400" },
+  sent: { label: "CQ sent", cls: "bg-amber-500/15 text-amber-400" },
+  missing: { label: "No CQ — chase", cls: "bg-red-500/15 text-red-400" },
 };
 
 const STAGE_COLORS = ["#6366F1", "#818CF8", "#38BDF8", "#22D3EE", "#2DD4BF", "#34D399", "#A3E635", "#F59E0B"];
@@ -38,9 +47,34 @@ function ratePill(pct: number) {
       : "bg-red-500/15 text-red-400";
 }
 
+/* Three dots against the weekly target of 3 real consults, plus overflow. */
+function ConsultPace({ count }: { count: number }) {
+  const met = count >= WEEKLY_CONSULT_TARGET;
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`text-sm font-semibold ${met ? "text-emerald-400" : count === 0 ? "text-red-400" : "text-[#E7ECF3]"}`} style={{ fontVariantNumeric: "tabular-nums" }}>
+        {count}
+      </span>
+      <span className="flex gap-0.5">
+        {Array.from({ length: WEEKLY_CONSULT_TARGET }, (_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 w-1.5 rounded-full ${i < count ? (met ? "bg-emerald-400" : "bg-indigo-400") : "bg-[#2A3348]"}`}
+          />
+        ))}
+      </span>
+      {count > WEEKLY_CONSULT_TARGET && (
+        <span className="text-[10px] font-semibold text-emerald-400">+{count - WEEKLY_CONSULT_TARGET}</span>
+      )}
+    </span>
+  );
+}
+
 export default function ConsultantsPreviewPage() {
   const totalStage = Object.values(STAGE_MIX).reduce((a, b) => a + b, 0);
   const num = "tabular-nums" as const;
+  const assigned = CONSULT_FUNNEL[0]?.count ?? 1;
+  const missingCq = UPCOMING_CONSULTS.filter((c) => c.cq === "missing").length;
 
   return (
     <main className="mx-auto max-w-[1400px] p-8">
@@ -49,7 +83,8 @@ export default function ConsultantsPreviewPage() {
         <span className="font-semibold uppercase tracking-wider">Preview · demo numbers</span>
         <span className="text-amber-200/70">
           Real consultant roster, placeholder metrics — every rate, time, and SLA state on this page
-          is demo data until Phase 7 wires live queries. The 48h take-back rule shown is the real spec.
+          is demo data until Phase 7 wires live queries. The 48h take-back and CQ-before-consult
+          rules shown are the real spec.
         </span>
       </div>
 
@@ -57,7 +92,8 @@ export default function ConsultantsPreviewPage() {
         <div>
           <h1 className="text-2xl font-semibold">Consultant Command</h1>
           <p className="mt-1 text-sm text-[#8B95A7]">
-            Are consultants responding, booking, and moving people through the pipeline?
+            Speed to consultation, three real consults a week, a CQ before every consult — the
+            activities that cause the deal to happen.
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -72,21 +108,27 @@ export default function ConsultantsPreviewPage() {
         </div>
       </div>
 
-      {/* KPI row */}
+      {/* KPI row — consult-first */}
       <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
-          { label: "Live opportunities", value: String(KPIS.liveOpportunities) },
-          { label: "Open pipeline", value: money(KPIS.pipelineValue) },
+          { label: "Speed to consult", value: KPIS.speedToConsult, sub: "median, assignment → consult held", hero: true },
+          { label: "Real consults (wk)", value: `${KPIS.consultsThisWeek} / ${KPIS.consultTargetThisWeek}`, sub: `target ${WEEKLY_CONSULT_TARGET} per consultant` },
+          { label: "CQ before consult", value: `${KPIS.cqBeforeConsultRate}%`, sub: `${missingCq} upcoming missing`, alert: missingCq > 0 },
           { label: "Median first touch", value: KPIS.medianFirstTouch },
           { label: "Show rate", value: `${KPIS.showRate}%` },
           { label: "SLA breaches (48h)", value: String(KPIS.slaBreaches48h), alert: KPIS.slaBreaches48h > 0 },
-          { label: "Take-backs (30d)", value: String(KPIS.takeBacks30d) },
         ].map((k) => (
-          <div key={k.label} className="rounded-xl border border-[#1E2635] bg-[#121826] p-4">
+          <div
+            key={k.label}
+            className={`rounded-xl border p-4 ${"hero" in k && k.hero ? "border-indigo-500/40 bg-indigo-500/10" : "border-[#1E2635] bg-[#121826]"}`}
+          >
             <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{k.label}</div>
             <div className={`mt-1 text-2xl font-semibold ${"alert" in k && k.alert ? "text-red-400" : ""}`} style={{ fontVariantNumeric: num }}>
               {k.value}
             </div>
+            {"sub" in k && k.sub && (
+              <div className={`mt-0.5 text-[10px] ${"alert" in k && k.alert ? "text-red-400/80" : "text-[#64748B]"}`}>{k.sub}</div>
+            )}
           </div>
         ))}
       </div>
@@ -102,29 +144,66 @@ export default function ConsultantsPreviewPage() {
           </span>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-[#C3CCDB]">
-          Good morning. {KPIS.liveOpportunities} live opportunities are in play worth {money(KPIS.pipelineValue)}.
-          Top consultant is Rob Petka — 31 active, 2h 10m median first touch, 78% show rate. Attention
-          required: Aaron Bakken has 2 assignments past the 48-hour no-touch wall; take-back and rerouting
-          run automatically, and his allocation drops until response times recover.
+          Good morning. {KPIS.consultsThisWeek} real consults completed this week against a roster
+          target of {KPIS.consultTargetThisWeek}; median speed to consultation is {KPIS.speedToConsult} from
+          assignment. {KPIS.cqBeforeConsultRate}% of consults had the CQ in hand first — {missingCq} upcoming
+          consults are missing one and are being chased. Fastest to the table is Rob Petka at 1d 18h with 4
+          consults, all CQ-backed. Attention required: Aaron Bakken has zero consults this week and 2
+          assignments past the 48-hour no-touch wall; take-back and rerouting run automatically, and his
+          allocation drops until response times recover.
         </p>
       </section>
 
-      {/* leaderboard + accountability */}
+      {/* assignment → consultation funnel */}
+      <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Assignment → consultation
+          </h2>
+          <span className="text-[11px] text-[#64748B]">medians are elapsed time from assignment</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+          {CONSULT_FUNNEL.map((step, i) => (
+            <div key={step.label} className="relative rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-semibold" style={{ fontVariantNumeric: num }}>{step.count}</span>
+                <span className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
+                  {Math.round((step.count / assigned) * 100)}%
+                </span>
+              </div>
+              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#8B95A7]">
+                {step.label}
+              </div>
+              <div className="mt-1.5 h-1 rounded-full bg-[#1B2333]">
+                <div
+                  className="h-1 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
+                  style={{ width: `${(step.count / assigned) * 100}%` }}
+                />
+              </div>
+              <div className="mt-1.5 text-[10px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
+                {step.median ? `median ${step.median}` : i === 0 ? "clock starts here" : " "}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* leaderboard + CQ gate */}
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
             Consultant performance
           </h2>
           <div className="overflow-x-auto">
-            <table className="mt-3 w-full min-w-[680px] text-sm">
+            <table className="mt-3 w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="text-left text-[10px] uppercase tracking-wider text-[#64748B]">
                   <th className="pb-2 font-semibold">Consultant</th>
-                  <th className="pb-2 font-semibold">Contacted</th>
-                  <th className="pb-2 font-semibold">Accept</th>
+                  <th className="pb-2 font-semibold">Consults / wk</th>
+                  <th className="pb-2 font-semibold">Speed to consult</th>
+                  <th className="pb-2 font-semibold">CQ first</th>
                   <th className="pb-2 font-semibold">First touch</th>
                   <th className="pb-2 font-semibold">Show</th>
-                  <th className="pb-2 font-semibold">Intro→close</th>
                   <th className="pb-2 font-semibold">Revenue</th>
                   <th className="pb-2 font-semibold">Load</th>
                   <th className="pb-2 font-semibold">SLA</th>
@@ -144,22 +223,21 @@ export default function ConsultantsPreviewPage() {
                           </span>
                         </span>
                       </td>
-                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{cn.contacted}</td>
+                      <td className="py-2.5"><ConsultPace count={cn.consultsThisWeek} /></td>
+                      <td className="py-2.5 text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>
+                        {cn.speedToConsult ?? <span className="text-red-400">—</span>}
+                      </td>
                       <td className="py-2.5">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${ratePill(cn.acceptRate)}`} style={{ fontVariantNumeric: num }}>
-                          {cn.acceptRate}%
-                        </span>
+                        {cn.cqBeforeConsult === null ? (
+                          <span className="text-xs text-[#64748B]">—</span>
+                        ) : (
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${ratePill(cn.cqBeforeConsult)}`} style={{ fontVariantNumeric: num }}>
+                            {cn.cqBeforeConsult}%
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>{cn.firstTouch}</td>
                       <td className="py-2.5" style={{ fontVariantNumeric: num }}>{cn.showRate}%</td>
-                      <td className="py-2.5">
-                        <span className="flex items-center gap-2">
-                          <span className="h-1 w-14 rounded-full bg-[#1B2333]">
-                            <span className="block h-1 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${Math.min(100, cn.introToClose * 5)}%` }} />
-                          </span>
-                          <span className="text-xs text-[#8B95A7]" style={{ fontVariantNumeric: num }}>{cn.introToClose}%</span>
-                        </span>
-                      </td>
                       <td className="py-2.5" style={{ fontVariantNumeric: num }}>{money(cn.revenue)}</td>
                       <td className={`py-2.5 ${overloaded ? "text-red-400" : "text-[#C3CCDB]"}`} style={{ fontVariantNumeric: num }}>
                         {cn.load[0]} / {cn.load[1]}
@@ -172,13 +250,40 @@ export default function ConsultantsPreviewPage() {
             </table>
           </div>
           <p className="mt-3 text-[11px] text-[#64748B]">
-            Routing rewards the top of this table: strong first-touch, accept and show rates earn new,
-            more, and higher-scored leads.
+            Real consult = completed consultation appointment with a logged disposition. Routing rewards
+            the top of this table: fast consults, CQ compliance, and show rate earn new, more, and
+            higher-scored leads.
           </p>
         </section>
 
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            CQ gate — upcoming consults
+          </h2>
+          <p className="mt-1 text-xs text-[#64748B]">
+            Every consult needs the CQ in hand first. Missing ones are chased now; the booking
+            hard-gate ships with Phase 7.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {UPCOMING_CONSULTS.map((c) => (
+              <li key={`${c.lead}-${c.when}`} className="rounded-lg border border-[#1E2635] bg-[#0F1522] px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[#E7ECF3]">{c.lead}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${CQ_BADGE[c.cq].cls}`}>
+                    {CQ_BADGE[c.cq].label}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
+                  <span className="truncate">{c.consultant} · {c.when}</span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <AgentAvatar name={c.agent} size={14} /> {c.agent}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <h2 className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
             Assignment SLA
           </h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -192,33 +297,39 @@ export default function ConsultantsPreviewPage() {
           <div className="mt-2 text-[11px] text-[#64748B]">
             Ladder: nudge +1h → nudge +4h → manager +24h → take-back at 48h.
           </div>
-
-          <h2 className="mt-5 text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
-            Take-back queue (48h rule)
-          </h2>
-          <ul className="mt-2 space-y-2 text-sm">
-            {TAKE_BACK_QUEUE.map((r) => {
-              const past = r.hoursSinceAssign >= 48;
-              return (
-                <li key={r.lead} className="rounded-lg border border-[#1E2635] bg-[#0F1522] px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[#E7ECF3]">{r.lead}</span>
-                    <span className={`shrink-0 text-xs font-semibold ${past ? "text-red-400" : "text-amber-400"}`} style={{ fontVariantNumeric: num }}>
-                      {past ? "reclaiming now" : `${48 - r.hoursSinceAssign}h left`}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
-                    <span className="truncate">{r.consultant} · no first touch in {r.hoursSinceAssign}h</span>
-                    <span className="flex shrink-0 items-center gap-1">
-                      <AgentAvatar name={r.agent} size={14} /> {r.agent}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
         </section>
       </div>
+
+      {/* take-back queue */}
+      <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+            Take-back queue (48h rule)
+          </h2>
+          <span className="text-[11px] text-[#64748B]">no first touch → reclaimed and rerouted, allocation drops</span>
+        </div>
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4">
+          {TAKE_BACK_QUEUE.map((r) => {
+            const past = r.hoursSinceAssign >= 48;
+            return (
+              <li key={r.lead} className="rounded-lg border border-[#1E2635] bg-[#0F1522] px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[#E7ECF3]">{r.lead}</span>
+                  <span className={`shrink-0 text-xs font-semibold ${past ? "text-red-400" : "text-amber-400"}`} style={{ fontVariantNumeric: num }}>
+                    {past ? "reclaiming now" : `${48 - r.hoursSinceAssign}h left`}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
+                  <span className="truncate">{r.consultant} · no first touch in {r.hoursSinceAssign}h</span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <AgentAvatar name={r.agent} size={14} /> {r.agent}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {/* stage mix bar */}
       <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
