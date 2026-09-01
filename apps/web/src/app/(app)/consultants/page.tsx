@@ -1,7 +1,7 @@
-import { AgentAvatar } from "@/components/agent-avatar";
+import { AgentAvatar, PersonAvatar } from "@/components/agent-avatar";
 import {
   AGENTS, CONSULTANTS, KPIS, OWNERSHIP, SLA_COUNTS, SLA_LABEL, STAGES,
-  STAGE_MIX, TAKE_BACK_QUEUE, type SlaState,
+  STAGE_MIX, TAKE_BACK_QUEUE, consultantAvatar, type SlaState,
 } from "./demo-data";
 
 export const metadata = { title: "Consultant Command — Athena" };
@@ -21,25 +21,6 @@ const SLA_BADGE: Record<SlaState, string> = {
 };
 
 const STAGE_COLORS = ["#6366F1", "#818CF8", "#38BDF8", "#22D3EE", "#2DD4BF", "#34D399", "#A3E635", "#F59E0B"];
-
-const AVATAR_GRADIENTS = [
-  "from-indigo-500 to-violet-600",
-  "from-cyan-500 to-sky-600",
-  "from-emerald-500 to-teal-600",
-  "from-amber-500 to-orange-600",
-  "from-pink-500 to-rose-600",
-  "from-violet-500 to-fuchsia-600",
-];
-
-function Initials({ name, i }: { name: string; i: number }) {
-  return (
-    <span
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]}`}
-    >
-      {name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-    </span>
-  );
-}
 
 function SlaBadge({ sla }: { sla: SlaState }) {
   return (
@@ -65,10 +46,10 @@ export default function ConsultantsPreviewPage() {
     <main className="mx-auto max-w-[1400px] p-8">
       {/* preview banner */}
       <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-        <span className="font-semibold uppercase tracking-wider">Preview · demo data</span>
+        <span className="font-semibold uppercase tracking-wider">Preview · demo numbers</span>
         <span className="text-amber-200/70">
-          This is the Phase 7 accountability screen with fictional consultants and numbers. It goes
-          live when routing + accountability ship; the 48h take-back rule shown here is the real spec.
+          Real consultant roster, placeholder metrics — every rate, time, and SLA state on this page
+          is demo data until Phase 7 wires live queries. The 48h take-back rule shown is the real spec.
         </span>
       </div>
 
@@ -122,9 +103,9 @@ export default function ConsultantsPreviewPage() {
         </div>
         <p className="mt-2 text-sm leading-relaxed text-[#C3CCDB]">
           Good morning. {KPIS.liveOpportunities} live opportunities are in play worth {money(KPIS.pipelineValue)}.
-          Top consultant is Maria Alvarez — 31 active, 2h 10m median first touch, 78% show rate. Attention
-          required: Rolf Lindqvist has 2 assignments past the 48-hour no-touch wall; take-back and rerouting
-          will run automatically, and his allocation drops until response times recover.
+          Top consultant is Rob Petka — 31 active, 2h 10m median first touch, 78% show rate. Attention
+          required: Aaron Bakken has 2 assignments past the 48-hour no-touch wall; take-back and rerouting
+          run automatically, and his allocation drops until response times recover.
         </p>
       </section>
 
@@ -150,16 +131,16 @@ export default function ConsultantsPreviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {CONSULTANTS.map((cn, i) => {
+                {CONSULTANTS.map((cn) => {
                   const overloaded = cn.load[0] > cn.load[1];
                   return (
                     <tr key={cn.name} className="border-t border-[#1A2130]">
-                      <td className="py-2.5">
+                      <td className="py-2.5 pr-3">
                         <span className="flex items-center gap-2.5">
-                          <Initials name={cn.name} i={i} />
-                          <span>
-                            <span className="block text-[#E7ECF3]">{cn.name}</span>
-                            <span className="block text-[11px] text-[#64748B]">{cn.city}</span>
+                          <PersonAvatar src={cn.avatar} alt={cn.name} size={32} />
+                          <span className="min-w-0">
+                            <span className="block whitespace-nowrap text-[#E7ECF3]">{cn.name}</span>
+                            <span className="block max-w-[190px] truncate text-[11px] text-[#64748B]">{cn.brands}</span>
                           </span>
                         </span>
                       </td>
@@ -277,11 +258,11 @@ export default function ConsultantsPreviewPage() {
             Who owns each visible opportunity, who assigned it, and whether it&apos;s moving.
           </p>
           <div className="mt-3 space-y-4">
-            {OWNERSHIP.map((group, gi) => (
+            {OWNERSHIP.map((group) => (
               <div key={group.consultant} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2.5">
-                    <Initials name={group.consultant} i={gi} />
+                    <PersonAvatar src={consultantAvatar(group.consultant)} alt={group.consultant} size={32} />
                     <span className="font-medium text-[#E7ECF3]">{group.consultant}</span>
                   </span>
                   <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-300" style={{ fontVariantNumeric: num }}>

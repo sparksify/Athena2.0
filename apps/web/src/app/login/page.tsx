@@ -22,7 +22,7 @@ export default function LoginPage() {
       setBusy(false);
       return;
     }
-    router.push("/ops/jobs");
+    router.push("/consultants");
     router.refresh();
   }
 

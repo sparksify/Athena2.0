@@ -1,7 +1,9 @@
-// DEMO FIXTURES for the Phase 7 preview. Every name and number in this file
-// is fictional (consultant names come from Steve's approved UI mockup).
-// When Phase 7 lands (consultant/assignment/opportunity tables), this file
-// is deleted and the page reads live queries instead.
+// Phase 7 preview fixtures. The consultant roster and their live-opportunity
+// counts come from the Athena 1.0 command center; every performance metric
+// (accept rate, first touch, show rate, revenue, SLA state) is PLACEHOLDER
+// DEMO DATA until Phase 7 wires live queries. Lead names are fictional on
+// purpose — real lead PII stays out of the repo. Avatars are generated
+// placeholder art in /public/avatars; real photos upload via admin later.
 
 import type { AgentName } from "@/components/agent-avatar";
 
@@ -27,25 +29,35 @@ export const SLA_LABEL: Record<SlaState, string> = {
 
 export type DemoConsultant = {
   name: string;
-  city: string;
-  contacted: number;
-  acceptRate: number; // %
-  firstTouch: string; // median
-  showRate: number; // %
-  introToClose: number; // %
-  revenue: number; // $
-  load: [number, number]; // active / capacity
-  sla: SlaState;
+  avatar: string;
+  brands: string; // short brand mix line (from the 1.0 ownership panel)
+  contacted: number; // live opportunities owned (1.0 counts)
+  acceptRate: number; // % — demo
+  firstTouch: string; // median — demo
+  showRate: number; // % — demo
+  introToClose: number; // % — demo
+  revenue: number; // $ — demo
+  load: [number, number]; // active / capacity — active from 1.0, capacity demo
+  sla: SlaState; // demo
 };
 
+const av = (f: string) => `/avatars/${f}.svg`;
+
 export const CONSULTANTS: DemoConsultant[] = [
-  { name: "Maria Alvarez", city: "Miami, FL", contacted: 31, acceptRate: 97, firstTouch: "2h 10m", showRate: 78, introToClose: 12.5, revenue: 105_000, load: [14, 18], sla: "on_track" },
-  { name: "James Okafor", city: "Irvine, CA", contacted: 26, acceptRate: 90, firstTouch: "4h 35m", showRate: 71, introToClose: 9.6, revenue: 62_500, load: [11, 18], sla: "on_track" },
-  { name: "Sona Patil", city: "Plano, TX", contacted: 22, acceptRate: 91, firstTouch: "3h 02m", showRate: 81, introToClose: 16.4, revenue: 80_000, load: [9, 15], sla: "on_track" },
-  { name: "Dana Brennan", city: "Austin, TX", contacted: 24, acceptRate: 79, firstTouch: "1d 3h", showRate: 58, introToClose: 6.2, revenue: 40_000, load: [19, 18], sla: "nudged" },
-  { name: "Elena Cho", city: "Denver, CO", contacted: 17, acceptRate: 84, firstTouch: "6h 48m", showRate: 64, introToClose: 7.1, revenue: 35_000, load: [8, 15], sla: "escalated" },
-  { name: "Rolf Lindqvist", city: "Scottsdale, AZ", contacted: 18, acceptRate: 65, firstTouch: "2d 6h", showRate: 50, introToClose: 0, revenue: 0, load: [5, 15], sla: "take_back" },
+  { name: "Rob Petka", avatar: av("rob-petka"), brands: "4EverCharge · CRS · Subcontain", contacted: 31, acceptRate: 97, firstTouch: "2h 10m", showRate: 78, introToClose: 12.5, revenue: 105_000, load: [31, 32], sla: "on_track" },
+  { name: "Adam Gruen", avatar: av("adam-gruen"), brands: "Subcontain · 4EverCharge · CRS", contacted: 19, acceptRate: 92, firstTouch: "3h 40m", showRate: 74, introToClose: 10.2, revenue: 71_000, load: [19, 24], sla: "on_track" },
+  { name: "Paulette Callender", avatar: av("paulette-callender"), brands: "Complete Mobile Drug Testing · CRS", contacted: 16, acceptRate: 94, firstTouch: "2h 55m", showRate: 81, introToClose: 14.1, revenue: 88_000, load: [16, 20], sla: "on_track" },
+  { name: "Michael Stavrinakis", avatar: av("michael-stavrinakis"), brands: "4EverCharge · FMB Re-engagement", contacted: 16, acceptRate: 88, firstTouch: "5h 05m", showRate: 69, introToClose: 8.4, revenue: 54_000, load: [16, 20], sla: "on_track" },
+  { name: "Lane Klastow", avatar: av("lane-klastow"), brands: "CRS · 4EverCharge · Sung Athena", contacted: 15, acceptRate: 90, firstTouch: "4h 20m", showRate: 72, introToClose: 9.0, revenue: 49_000, load: [15, 20], sla: "on_track" },
+  { name: "Dave Sullivan", avatar: av("dave-sullivan"), brands: "Resting Rainbow · 4EverCharge", contacted: 14, acceptRate: 86, firstTouch: "6h 10m", showRate: 66, introToClose: 7.3, revenue: 42_000, load: [14, 18], sla: "on_track" },
+  { name: "Mariel Miller", avatar: av("mariel-miller"), brands: "CRS · Content Recovery Specialists", contacted: 13, acceptRate: 89, firstTouch: "4h 45m", showRate: 70, introToClose: 8.8, revenue: 46_000, load: [13, 18], sla: "on_track" },
+  { name: "Stephen Rotay", avatar: av("stephen-rotay"), brands: "Sung Athena · Subcontain · 4EverCharge", contacted: 11, acceptRate: 81, firstTouch: "11h 30m", showRate: 61, introToClose: 5.2, revenue: 28_000, load: [11, 16], sla: "nudged" },
+  { name: "Chris Davenport", avatar: av("chris-davenport"), brands: "4EverCharge · CRS", contacted: 9, acceptRate: 77, firstTouch: "1d 2h", showRate: 55, introToClose: 4.0, revenue: 18_000, load: [9, 16], sla: "escalated" },
+  { name: "Aaron Bakken", avatar: av("aaron-bakken"), brands: "Cleanup tracked", contacted: 9, acceptRate: 63, firstTouch: "2d 4h", showRate: 48, introToClose: 0, revenue: 0, load: [9, 16], sla: "take_back" },
 ];
+
+export const consultantAvatar = (name: string) =>
+  CONSULTANTS.find((c) => c.name === name)?.avatar ?? av("rob-petka");
 
 export type DemoAgent = {
   name: AgentName;
@@ -74,7 +86,7 @@ export type DemoLead = {
 
 export const OWNERSHIP: { consultant: string; leads: DemoLead[] }[] = [
   {
-    consultant: "Maria Alvarez",
+    consultant: "Rob Petka",
     leads: [
       { lead: "Alan Ashford", email: "alan.ashford@example.com", brand: "4EverCharge", agent: "Tim", stage: "Talking to Zors", daysInStage: 4, sla: "on_track" },
       { lead: "Naomi Tran", email: "naomi.tran@example.com", brand: "CRS", agent: "Sophie", stage: "CQ Received", daysInStage: 2, sla: "on_track" },
@@ -83,7 +95,7 @@ export const OWNERSHIP: { consultant: string; leads: DemoLead[] }[] = [
     ],
   },
   {
-    consultant: "Dana Brennan",
+    consultant: "Stephen Rotay",
     leads: [
       { lead: "Manuel Cerruti", email: "manuel.cerruti@example.com", brand: "Sung Athena", agent: "Tim", stage: "Lead In", daysInStage: 1, sla: "nudged" },
       { lead: "Mikhail Toro", email: "mikhail.toro@example.com", brand: "Subcontain", agent: "Sophie", stage: "Lead In", daysInStage: 1, sla: "nudged" },
@@ -91,7 +103,7 @@ export const OWNERSHIP: { consultant: string; leads: DemoLead[] }[] = [
     ],
   },
   {
-    consultant: "Rolf Lindqvist",
+    consultant: "Aaron Bakken",
     leads: [
       { lead: "Rashad Rahim", email: "rashad.rahim@example.com", brand: "Resting Rainbow", agent: "Claire", stage: "Lead In", daysInStage: 2, sla: "take_back" },
       { lead: "Stefan Olsen", email: "stefan.olsen@example.com", brand: "Sung Athena", agent: "Rina", stage: "Lead In", daysInStage: 2, sla: "take_back" },
@@ -109,10 +121,10 @@ export type TakeBackRow = {
 
 // 48h no-touch rule: these assignments are approaching or past the wall.
 export const TAKE_BACK_QUEUE: TakeBackRow[] = [
-  { lead: "Rashad Rahim", consultant: "Rolf Lindqvist", agent: "Claire", hoursSinceAssign: 49 },
-  { lead: "Stefan Olsen", consultant: "Rolf Lindqvist", agent: "Rina", hoursSinceAssign: 47 },
-  { lead: "Simar Bhagat", consultant: "Rolf Lindqvist", agent: "Tim", hoursSinceAssign: 41 },
-  { lead: "Petra Novak", consultant: "Elena Cho", agent: "Sophie", hoursSinceAssign: 38 },
+  { lead: "Rashad Rahim", consultant: "Aaron Bakken", agent: "Claire", hoursSinceAssign: 49 },
+  { lead: "Stefan Olsen", consultant: "Aaron Bakken", agent: "Rina", hoursSinceAssign: 47 },
+  { lead: "Simar Bhagat", consultant: "Aaron Bakken", agent: "Tim", hoursSinceAssign: 41 },
+  { lead: "Petra Novak", consultant: "Chris Davenport", agent: "Sophie", hoursSinceAssign: 38 },
 ];
 
 export const SLA_COUNTS: Record<SlaState, number> = {
