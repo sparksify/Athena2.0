@@ -13,6 +13,9 @@
 // - CQ before consult: tracked and chased now; booking hard-gate is the
 //   Phase 7 rule.
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import type { AgentName } from "@/components/agent-avatar";
 
 export const STAGES = [
@@ -53,7 +56,17 @@ export type DemoConsultant = {
   sla: SlaState; // demo
 };
 
-const av = (f: string) => `/avatars/${f}.svg`;
+/* A real headshot dropped into public/avatars as <slug>.jpg/.jpeg/.png/.webp
+   wins over the generated .svg placeholder — no code change needed. */
+const PHOTO_EXTS = ["jpg", "jpeg", "png", "webp"] as const;
+const av = (slug: string) => {
+  for (const ext of PHOTO_EXTS) {
+    if (existsSync(join(process.cwd(), "public", "avatars", `${slug}.${ext}`))) {
+      return `/avatars/${slug}.${ext}`;
+    }
+  }
+  return `/avatars/${slug}.svg`;
+};
 
 export const CONSULTANTS: DemoConsultant[] = [
   { name: "Rob Petka", avatar: av("rob-petka"), brands: "4EverCharge · CRS · Subcontain", contacted: 31, consultsThisWeek: 4, speedToConsult: "1d 18h", cqBeforeConsult: 100, acceptRate: 97, firstTouch: "2h 10m", showRate: 78, revenue: 105_000, load: [31, 32], sla: "on_track" },
