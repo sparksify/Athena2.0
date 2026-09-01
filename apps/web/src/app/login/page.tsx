@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { AthenaLogo } from "@/components/athena-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,8 +42,8 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-lg border border-[#1E2635] bg-[#121826] p-8 shadow-sm">
-        <h1 className="text-xl font-semibold">Athena</h1>
-        <p className="mt-1 text-sm text-[#8B95A7]">Operator sign in</p>
+        <AthenaLogo size={34} className="text-lg" />
+        <p className="mt-2 text-sm text-[#8B95A7]">Operator sign in</p>
         <div className="mt-6 space-y-3">
           <input
             className="w-full rounded-md border border-[#2A3447] px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
