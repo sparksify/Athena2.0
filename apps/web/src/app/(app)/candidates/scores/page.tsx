@@ -54,9 +54,6 @@ export default async function ScoresPage() {
             {scored.length} scored candidates · deterministic factors, fully explainable
           </p>
         </div>
-        <a className="text-sm text-zinc-600 underline-offset-4 hover:underline" href="/ops/jobs">
-          Agent jobs
-        </a>
       </div>
 
       <section className="mt-8 rounded-lg border border-zinc-200 bg-white p-6">

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PingButton } from "./ping-button";
-import { SignOutButton } from "./sign-out-button";
 
 export const dynamic = "force-dynamic";
 
@@ -37,16 +36,7 @@ export default async function JobsPage() {
           <h1 className="text-2xl font-semibold">Agent jobs</h1>
           <p className="text-sm text-zinc-500">{user.email}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <a className="px-2 text-sm text-zinc-600 underline-offset-4 hover:underline" href="/candidates/scores">
-            Scores
-          </a>
-          <a className="px-2 text-sm text-zinc-600 underline-offset-4 hover:underline" href="/candidates/review">
-            Identity review
-          </a>
-          <PingButton />
-          <SignOutButton />
-        </div>
+        <PingButton />
       </div>
 
       <section className="mt-8">

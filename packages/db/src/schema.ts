@@ -46,6 +46,7 @@ export const candidate = pgTable(
     status: text("status").notNull().default("new"),
     mergedIntoId: uuid("merged_into_id"),
     currentScore: integer("current_score"),
+    assignedToUserId: uuid("assigned_to_user_id").references(() => appUser.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
