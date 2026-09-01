@@ -10,6 +10,14 @@ export {
   type ImportReport,
 } from "./ingest/import.js";
 export { runVerificationJob } from "./ingest/verification.js";
+export {
+  applyResolution,
+  pendingReviews,
+  AUTO_LINK_THRESHOLD,
+  REVIEW_THRESHOLD,
+  type ResolvedPair,
+  type ResolutionResult,
+} from "./identity/resolve.js";
 export * from "./ingest/normalize.js";
 export { PARSERS } from "./ingest/parsers/index.js";
 export type { ParsedRecord, SourceParser } from "./ingest/types.js";

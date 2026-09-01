@@ -44,6 +44,7 @@ export const candidate = pgTable(
     city: text("city"),
     state: text("state"),
     status: text("status").notNull().default("new"),
+    mergedIntoId: uuid("merged_into_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -139,6 +140,27 @@ export const suppression = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("suppression_org_channel_identifier_idx").on(t.orgId, t.channel, t.identifier)],
+);
+
+export const identityReview = pgTable(
+  "identity_review",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateAId: uuid("candidate_a_id").notNull().references(() => candidate.id),
+    candidateBId: uuid("candidate_b_id").notNull().references(() => candidate.id),
+    score: numeric("score").notNull(),
+    method: text("method", { enum: ["splink", "manual"] }).notNull(),
+    status: text("status", { enum: ["pending", "merged", "rejected", "split"] })
+      .notNull()
+      .default("pending"),
+    evidence: jsonb("evidence").notNull().default({}),
+    mergeDetail: jsonb("merge_detail"),
+    reviewedBy: uuid("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("identity_review_status_idx").on(t.orgId, t.status)],
 );
 
 export const importBatch = pgTable("import_batch", {

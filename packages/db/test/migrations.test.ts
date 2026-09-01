@@ -42,6 +42,7 @@ describe("migrations", () => {
       "email_verification",
       "event",
       "identifier",
+      "identity_review",
       "import_batch",
       "org",
       "prompt_version",

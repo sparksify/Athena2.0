@@ -121,7 +121,8 @@ export interface AudienceSync {
 
 export interface IdentityResolver {
   readonly name: string;
-  resolve(records: { sourceRecordId: string; fields: Record<string, unknown> }[]): Promise<
+  /** Score candidate pairs for probabilistic identity. ids are candidate ids. */
+  resolve(records: { id: string; fields: Record<string, unknown> }[]): Promise<
     { leftId: string; rightId: string; confidence: number }[]
   >;
 }

@@ -37,7 +37,10 @@ export default async function JobsPage() {
           <h1 className="text-2xl font-semibold">Agent jobs</h1>
           <p className="text-sm text-zinc-500">{user.email}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <a className="px-2 text-sm text-zinc-600 underline-offset-4 hover:underline" href="/candidates/review">
+            Identity review
+          </a>
           <PingButton />
           <SignOutButton />
         </div>
