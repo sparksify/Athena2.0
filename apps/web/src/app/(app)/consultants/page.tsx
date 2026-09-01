@@ -76,18 +76,47 @@ function ConsultPace({ count }: { count: number }) {
 
 /* ---------- hero building blocks (server-rendered, no client JS) ---------- */
 
-function Spark({ points, color }: { points: number[]; color: string }) {
-  const w = 84;
-  const h = 26;
+/* Shared surface: soft top highlight, hairline border, deep drop shadow. */
+const CARD =
+  "relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-[#161D2E] to-[#111726] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_20px_40px_-22px_rgba(0,0,0,0.8)]";
+
+function Glow({ className, color }: { className: string; color: string }) {
+  return (
+    <div
+      className={`pointer-events-none absolute rounded-full blur-3xl ${className}`}
+      style={{ backgroundColor: color }}
+      aria-hidden
+    />
+  );
+}
+
+function Spark({ id, points, color }: { id: string; points: number[]; color: string }) {
+  const w = 88;
+  const h = 30;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const span = Math.max(0.001, max - min);
   const step = w / (points.length - 1);
-  const y = (v: number) => h - 4 - ((v - min) / span) * (h - 8);
+  const y = (v: number) => h - 5 - ((v - min) / span) * (h - 10);
   const path = points.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const lastX = ((points.length - 1) * step).toFixed(1);
+  const lastY = y(points[points.length - 1] ?? 0);
   return (
-    <svg width={w} height={h} className="block shrink-0" aria-hidden>
-      <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={w} height={h} className="block shrink-0 overflow-visible" aria-hidden>
+      <defs>
+        <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.32} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+        <filter id={`${id}-glow`} x="-20%" y="-60%" width="140%" height="220%">
+          <feGaussianBlur stdDeviation="2.4" />
+        </filter>
+      </defs>
+      <path d={`${path} L${lastX},${h} L0,${h} Z`} fill={`url(#${id}-fill)`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.5} filter={`url(#${id}-glow)`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r={3.2} fill={color} opacity={0.35} />
+      <circle cx={lastX} cy={lastY} r={1.8} fill="#fff" />
     </svg>
   );
 }
@@ -96,7 +125,15 @@ function HeroIcon({ color, size = 36, children }: { color: string; size?: number
   return (
     <span
       className="flex shrink-0 items-center justify-center rounded-xl border"
-      style={{ width: size, height: size, backgroundColor: `${color}14`, borderColor: `${color}33`, color }}
+      style={{
+        width: size,
+        height: size,
+        color,
+        borderColor: `${color}66`,
+        background: `linear-gradient(145deg, ${color}30, ${color}0d)`,
+        boxShadow: `0 0 18px ${color}33, inset 0 1px 0 rgba(255,255,255,0.10)`,
+        filter: `drop-shadow(0 0 4px ${color}66)`,
+      }}
     >
       <svg
         width={Math.round(size * 0.52)}
@@ -209,36 +246,73 @@ const ICON = {
   ),
 } as const;
 
+const ARC = "M 20 100 A 80 80 0 0 1 180 100";
+const ARC_GLOSS = "M 16 100 A 84 84 0 0 1 184 100";
+
 function GoalGauge({ value, target, paceBehind }: { value: number; target: number; paceBehind: number }) {
-  const r = 80;
-  const len = Math.PI * r;
+  const len = Math.PI * 80;
+  const lenGloss = Math.PI * 84;
   const frac = Math.min(1, value / target);
+  const dash = (l: number) => `${(l * frac).toFixed(1)} ${l.toFixed(1)}`;
   return (
-    <div className="relative mx-auto w-full max-w-[330px]">
-      <svg viewBox="0 0 200 112" className="block w-full" aria-hidden>
+    <div className="relative mx-auto w-full max-w-[340px]">
+      <svg viewBox="0 0 200 112" className="block w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="goal-arc" x1="0" y1="1" x2="1" y2="0">
             <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="55%" stopColor="#6366F1" />
+            <stop offset="40%" stopColor="#6D5CF6" />
+            <stop offset="72%" stopColor="#38BDF8" />
             <stop offset="100%" stopColor="#22D3EE" />
           </linearGradient>
+          <linearGradient id="goal-track" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1C2436" />
+            <stop offset="100%" stopColor="#131A29" />
+          </linearGradient>
+          <filter id="goal-bloom" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5" />
+          </filter>
         </defs>
-        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1B2333" strokeWidth={13} strokeLinecap="round" />
+        {/* track with a soft inner shadow line */}
+        <path d={ARC} fill="none" stroke="url(#goal-track)" strokeWidth={13} strokeLinecap="round" />
+        <path d={ARC} fill="none" stroke="#000" strokeOpacity={0.25} strokeWidth={1} transform="translate(0,-5.5)" />
+        {/* bloom under the progress arc */}
         <path
-          d="M 20 100 A 80 80 0 0 1 180 100"
+          d={ARC}
           fill="none"
           stroke="url(#goal-arc)"
-          strokeWidth={13}
+          strokeWidth={20}
           strokeLinecap="round"
-          strokeDasharray={`${(len * frac).toFixed(1)} ${len.toFixed(1)}`}
+          strokeDasharray={dash(len)}
+          opacity={0.55}
+          filter="url(#goal-bloom)"
+        />
+        {/* progress arc */}
+        <path d={ARC} fill="none" stroke="url(#goal-arc)" strokeWidth={13} strokeLinecap="round" strokeDasharray={dash(len)} />
+        {/* gloss highlight along the outer edge */}
+        <path
+          d={ARC_GLOSS}
+          fill="none"
+          stroke="#fff"
+          strokeOpacity={0.22}
+          strokeWidth={1.4}
+          strokeLinecap="round"
+          strokeDasharray={dash(lenGloss)}
         />
       </svg>
       <div className="absolute inset-x-0 bottom-1 flex flex-col items-center text-center">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#26304A] bg-[#0F1522] text-cyan-300">
-          <InlineIcon size={16}>{ICON.trophy}</InlineIcon>
+        <span
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 text-cyan-200"
+          style={{
+            background: "linear-gradient(180deg, #16213A, #0F1522)",
+            boxShadow: "0 0 22px rgba(34,211,238,0.30), inset 0 1px 0 rgba(255,255,255,0.10)",
+          }}
+        >
+          <InlineIcon size={17}>{ICON.trophy}</InlineIcon>
         </span>
-        <div className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-400">On track</div>
-        <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-[#8B95A7]" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]">
+          On track
+        </div>
+        <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-[#94A0B8]" style={{ fontVariantNumeric: "tabular-nums" }}>
           You&apos;re {paceBehind} consults behind target pace to hit {target} this week.
         </p>
       </div>
@@ -302,10 +376,10 @@ export default async function ConsultantsPreviewPage() {
       {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-400">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.45)]">
             Consultant Command
           </div>
-          <h1 className="mt-1 text-3xl font-semibold">
+          <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight text-white">
             {greeting}, {firstName}
           </h1>
           <p className="mt-1.5 text-sm text-[#8B95A7]">
@@ -313,11 +387,15 @@ export default async function ConsultantsPreviewPage() {
             activities that cause the deal to happen.
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex overflow-hidden rounded-lg border border-white/[0.08] bg-[#121826] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           {["Today", "7 days", "30 days", "Lifetime"].map((s, i) => (
             <span
               key={s}
-              className={`rounded-lg border px-3 py-1.5 text-xs ${i === 3 ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-300" : "border-[#1E2635] bg-[#121826] text-[#8B95A7]"}`}
+              className={`px-3.5 py-1.5 text-xs ${
+                i === 3
+                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.35)]"
+                  : "border-l border-white/[0.06] text-[#8B95A7] first:border-l-0"
+              }`}
             >
               {s}
             </span>
@@ -327,32 +405,37 @@ export default async function ConsultantsPreviewPage() {
 
       {/* weekly goal + needs attention */}
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
-        <section className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-[#131A33] to-[#111726] p-6">
-          <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-[1fr_1.15fr]">
+        <section className={`${CARD} border-indigo-400/15 p-6`} style={{ background: "linear-gradient(135deg, #151C38 0%, #131A2E 45%, #111726 100%)" }}>
+          <Glow className="-top-24 right-10 h-72 w-72 opacity-40" color="#6366F1" />
+          <Glow className="-bottom-20 right-1/4 h-52 w-52 opacity-25" color="#22D3EE" />
+          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-20" color="#7C3AED" />
+          <div className="relative grid grid-cols-1 items-center gap-6 md:grid-cols-[1fr_1.15fr]">
             <div>
               <div className="flex items-center gap-3">
-                <HeroIcon color="#818CF8" size={42}>{ICON.target}</HeroIcon>
+                <HeroIcon color="#818CF8" size={44}>{ICON.target}</HeroIcon>
                 <div>
-                  <div className="text-lg font-semibold text-[#E7ECF3]">Weekly Consult Goal</div>
+                  <div className="text-lg font-semibold text-white">Weekly Consult Goal</div>
                   <div className="text-xs text-[#8B95A7]">
                     Real consults (weekly target {KPIS.consultTargetThisWeek})
                   </div>
                 </div>
               </div>
               <div className="mt-5 flex items-baseline gap-2" style={{ fontVariantNumeric: num }}>
-                <span className="text-5xl font-bold text-[#E7ECF3]">{KPIS.consultsThisWeek}</span>
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.35)]">
+                  {KPIS.consultsThisWeek}
+                </span>
                 <span className="text-2xl font-semibold text-[#64748B]">/ {KPIS.consultTargetThisWeek}</span>
               </div>
-              <div className="mt-1 text-sm font-semibold text-cyan-400" style={{ fontVariantNumeric: num }}>
+              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)]" style={{ fontVariantNumeric: num }}>
                 {goalPct}% of target
               </div>
-              <div className="mt-3 h-1.5 w-full max-w-[260px] rounded-full bg-[#1B2333]">
+              <div className="mt-3 h-1.5 w-full max-w-[260px] rounded-full bg-[#0D1220] shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.55)]"
                   style={{ width: `${goalPct}%` }}
                 />
               </div>
-              <div className="mt-4 flex items-center gap-2 text-sm text-[#C3CCDB]">
+              <div className="mt-4 flex items-center gap-2 text-sm text-cyan-100">
                 <span className="text-cyan-300"><InlineIcon size={14}>{ICON.calendar}</InlineIcon></span>
                 <span className="font-medium" style={{ fontVariantNumeric: num }}>
                   {remaining} consults remaining
@@ -364,48 +447,58 @@ export default async function ConsultantsPreviewPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-red-500/25 bg-gradient-to-br from-[#1A1219] to-[#121826] p-5">
-          <div className="flex items-center gap-2 text-red-400">
-            <InlineIcon size={15}>{ICON.bell}</InlineIcon>
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em]">Needs attention</h2>
+        <section className={`${CARD} border-red-400/20 p-5`} style={{ background: "linear-gradient(160deg, #1E1420 0%, #171323 40%, #121826 100%)" }}>
+          <Glow className="-right-16 -top-16 h-56 w-56 opacity-30" color="#EF4444" />
+          <div className="relative">
+            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]">
+              <InlineIcon size={15}>{ICON.bell}</InlineIcon>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Needs attention</h2>
+            </div>
+            <div className="mt-3 space-y-3">
+              {[
+                { count: missingCq, title: "CQ forms missing", sub: "Before consults", icon: ICON.clipboard },
+                { count: KPIS.slaBreaches48h, title: "SLA breaches", sub: "Past 48 hours", icon: ICON.clock },
+              ].map((a) => (
+                <div
+                  key={a.title}
+                  className="flex items-center gap-3 rounded-xl border border-red-400/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  style={{ background: "linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))" }}
+                >
+                  <HeroIcon color="#F87171" size={40}>{a.icon}</HeroIcon>
+                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.6)]" style={{ fontVariantNumeric: num }}>
+                    {a.count}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-white">{a.title}</span>
+                    <span className="block text-[11px] text-[#8B95A7]">{a.sub}</span>
+                  </span>
+                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]">
+                    Review
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-[#8B95A7]">Resolve now to avoid delayed deals.</p>
           </div>
-          <div className="mt-3 space-y-3">
-            {[
-              { count: missingCq, title: "CQ forms missing", sub: "Before consults", icon: ICON.clipboard },
-              { count: KPIS.slaBreaches48h, title: "SLA breaches", sub: "Past 48 hours", icon: ICON.clock },
-            ].map((a) => (
-              <div key={a.title} className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3">
-                <HeroIcon color="#F87171" size={38}>{a.icon}</HeroIcon>
-                <span className="text-xl font-bold text-red-400" style={{ fontVariantNumeric: num }}>{a.count}</span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-[#E7ECF3]">{a.title}</span>
-                  <span className="block text-[11px] text-[#8B95A7]">{a.sub}</span>
-                </span>
-                <span className="ml-auto shrink-0 rounded-lg border border-red-500/40 px-3 py-1 text-xs font-medium text-red-300">
-                  Review
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] text-[#8B95A7]">Resolve now to avoid delayed deals.</p>
         </section>
       </div>
 
       {/* KPI sparkline cards */}
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {heroKpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-[#1E2635] bg-[#121826] p-4">
-            <div className="flex items-center gap-3">
-              <HeroIcon color={k.color}>{k.icon}</HeroIcon>
+        {heroKpis.map((k, i) => (
+          <div key={k.label} className={`${CARD} p-4`}>
+            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.12]" color={k.color} />
+            <div className="relative flex items-center gap-3">
+              <HeroIcon color={k.color} size={40}>{k.icon}</HeroIcon>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">
+                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7C8799]">
                   {k.label}
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-2xl font-semibold text-[#E7ECF3]" style={{ fontVariantNumeric: num }}>
+                  <span className="text-[26px] font-semibold leading-tight text-white" style={{ fontVariantNumeric: num }}>
                     {k.value}
                   </span>
-                  <Spark points={k.spark} color={k.color} />
+                  <Spark id={`spark-${i}`} points={k.spark} color={k.color} />
                 </div>
                 {k.sub && (
                   <div
@@ -422,49 +515,53 @@ export default async function ConsultantsPreviewPage() {
       </div>
 
       {/* Athena briefing */}
-      <section className="mt-4 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-[#101A33] to-[#131A3A] p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-indigo-300">
-            <InlineIcon size={15}>{ICON.sparkles}</InlineIcon>
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em]">Athena briefing</h2>
+      <section className={`${CARD} mt-4 border-indigo-400/20 p-5`} style={{ background: "linear-gradient(90deg, #121A38 0%, #141B3C 55%, #171A40 100%)" }}>
+        <Glow className="-left-20 -top-24 h-64 w-64 opacity-30" color="#6366F1" />
+        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-20" color="#8B5CF6" />
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]">
+              <InlineIcon size={15}>{ICON.sparkles}</InlineIcon>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Athena briefing</h2>
+            </div>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]">
+              Demo
+            </span>
           </div>
-          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-            Demo
-          </span>
-        </div>
-        <div className="mt-3 grid grid-cols-1 gap-4 text-sm leading-relaxed text-[#C3CCDB] md:grid-cols-3 md:divide-x md:divide-[#26304A]">
-          <ul className="list-disc space-y-1.5 pl-4 marker:text-[#64748B]">
-            <li>{KPIS.consultsThisWeek} of {KPIS.consultTargetThisWeek} consults completed this week.</li>
-            <li>Median speed to consultation is {KPIS.speedToConsult} from assignment.</li>
-          </ul>
-          <ul className="list-disc space-y-1.5 pl-4 marker:text-[#64748B] md:pl-8">
-            <li>
-              {KPIS.cqBeforeConsultRate}% of consults had the CQ in hand first — {missingCq} upcoming
-              consults are missing one and are being chased.
-            </li>
-          </ul>
-          <ul className="list-disc space-y-1.5 pl-4 marker:text-[#64748B] md:pl-8">
-            <li>Fastest to the table is Rob Petka at 1d 18h with 4 consults, all CQ-backed.</li>
-            <li>
-              Aaron Bakken has zero consults this week and 2 assignments past the 48-hour no-touch wall.
-            </li>
-          </ul>
+          <div className="mt-3 grid grid-cols-1 gap-4 text-sm leading-relaxed text-[#C9D2E0] md:grid-cols-3 md:divide-x md:divide-white/[0.08]">
+            <ul className="list-disc space-y-1.5 pl-4 marker:text-indigo-400/70">
+              <li>{KPIS.consultsThisWeek} of {KPIS.consultTargetThisWeek} consults completed this week.</li>
+              <li>Median speed to consultation is {KPIS.speedToConsult} from assignment.</li>
+            </ul>
+            <ul className="list-disc space-y-1.5 pl-4 marker:text-indigo-400/70 md:pl-8">
+              <li>
+                {KPIS.cqBeforeConsultRate}% of consults had the CQ in hand first — {missingCq} upcoming
+                consults are missing one and are being chased.
+              </li>
+            </ul>
+            <ul className="list-disc space-y-1.5 pl-4 marker:text-indigo-400/70 md:pl-8">
+              <li>Fastest to the table is Rob Petka at 1d 18h with 4 consults, all CQ-backed.</li>
+              <li>
+                Aaron Bakken has zero consults this week and 2 assignments past the 48-hour no-touch wall.
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
       {/* assignment → consultation funnel */}
-      <section className="mt-4 rounded-2xl border border-[#1E2635] bg-[#121826] p-5">
+      <section className={`${CARD} mt-4 p-5`}>
         <div className="flex items-baseline justify-between gap-3">
-          <div className="flex items-center gap-2 text-indigo-400">
+          <div className="flex items-center gap-2 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]">
             <InlineIcon size={14}>{ICON.funnel}</InlineIcon>
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.18em]">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">
               Assignment → Consultation Funnel
             </h2>
           </div>
           <span className="text-[11px] text-[#64748B]">medians are elapsed time from assignment</span>
         </div>
-        <div className="overflow-x-auto pb-1">
-          <div className="mt-4 flex min-w-[900px] gap-1">
+        <div className="overflow-x-auto pb-1 pt-1">
+          <div className="mt-3 flex min-w-[900px] gap-1.5">
             {CONSULT_FUNNEL.map((step, i) => {
               const s = FUNNEL_STYLE[i] ?? FUNNEL_STYLE[0];
               const first = i === 0;
@@ -475,47 +572,60 @@ export default async function ConsultantsPreviewPage() {
                   ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 16px 50%)"
                   : "polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%)";
               return (
-                <div
-                  key={step.label}
-                  className="flex-1 px-6 py-3.5"
-                  style={{
-                    clipPath: clip,
-                    background: `linear-gradient(90deg, ${s.color}12, ${s.color}2b)`,
-                  }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold"
-                      style={{ borderColor: `${s.color}66`, color: s.color, fontVariantNumeric: num }}
+                <div key={step.label} className="flex-1" style={{ filter: `drop-shadow(0 0 10px ${s.color}40)` }}>
+                  {/* outer = glowing 1px border, inner = fill */}
+                  <div style={{ clipPath: clip, padding: 1, background: `linear-gradient(90deg, ${s.color}66, ${s.color}b3)` }}>
+                    <div
+                      className="px-6 py-3.5"
+                      style={{
+                        clipPath: clip,
+                        background: `linear-gradient(135deg, ${s.color}3d 0%, ${s.color}1a 55%, #121826 100%)`,
+                      }}
                     >
-                      {i + 1}
-                    </span>
-                    <span className="text-2xl font-bold text-[#E7ECF3]" style={{ fontVariantNumeric: num }}>
-                      {step.count}
-                    </span>
-                    <span className="text-xs font-semibold" style={{ color: s.color, fontVariantNumeric: num }}>
-                      {Math.round((step.count / assigned) * 100)}%
-                    </span>
-                  </div>
-                  <div
-                    className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: s.color }}
-                  >
-                    <InlineIcon size={11}>{s.icon}</InlineIcon>
-                    {step.label}
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold"
+                          style={{
+                            borderColor: `${s.color}99`,
+                            color: s.color,
+                            background: `${s.color}26`,
+                            boxShadow: `0 0 10px ${s.color}66`,
+                            fontVariantNumeric: num,
+                          }}
+                        >
+                          {i + 1}
+                        </span>
+                        <span
+                          className="text-[28px] font-bold leading-none text-white"
+                          style={{ fontVariantNumeric: num, textShadow: `0 0 18px ${s.color}80` }}
+                        >
+                          {step.count}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color: s.color, fontVariantNumeric: num }}>
+                          {Math.round((step.count / assigned) * 100)}%
+                        </span>
+                      </div>
+                      <div
+                        className="mt-2 flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em]"
+                        style={{ color: s.color }}
+                      >
+                        <InlineIcon size={11}>{s.icon}</InlineIcon>
+                        {step.label}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="mt-1.5 flex min-w-[900px] gap-1">
+          <div className="mt-2 flex min-w-[900px] gap-1.5">
             {CONSULT_FUNNEL.map((step, i) => (
               <div
                 key={step.label}
                 className="flex-1 px-6 text-[10px] text-[#64748B]"
                 style={{ fontVariantNumeric: num }}
               >
-                {step.median ? `median ${step.median}` : i === 0 ? "clock starts here" : " "}
+                {step.median ? `median ${step.median}` : i === 0 ? "clock starts here" : " "}
               </div>
             ))}
           </div>
