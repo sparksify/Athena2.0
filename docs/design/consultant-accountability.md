@@ -108,8 +108,9 @@ Nick's priorities require, per consultant:
    assignments/interactions attribute to the agent that made them, so the
    ownership panel can show "Assigned by Sophie" with her avatar as today.
 
-Outstanding (non-blocking): Steve to supply the four persona avatar images
-(from the Athena 1.0 personas assets) so they ship with the Phase 7 UI.
+~~Outstanding (non-blocking): Steve to supply the four persona avatar images~~
+Resolved 2026-09-01: all four persona portraits and all ten consultant
+headshots are committed under `apps/web/public/avatars/`.
 
 ## Update — Nick's email, 2026-08-30 (consult-first priorities)
 
