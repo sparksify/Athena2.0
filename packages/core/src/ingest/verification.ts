@@ -1,7 +1,7 @@
 import type { EmailVerifier } from "@athena/contracts";
 import { agentJob, costRecord, emailVerification } from "@athena/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { emit, type EmitTx } from "../events/emit.js";
+import { emit, type EmitTx } from "../events/emit";
 
 type Db = EmitTx & {
   transaction: <T>(fn: (tx: EmitTx) => Promise<T>) => Promise<T>;

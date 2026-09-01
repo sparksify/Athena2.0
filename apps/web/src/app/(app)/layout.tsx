@@ -7,6 +7,7 @@ import { SignOutButton } from "./sign-out-button";
 const NAV: { label: string; href?: string; children?: { label: string; href: string }[] }[] = [
   { label: "Overview", href: "/" },
   { label: "Candidates", href: "/candidates" },
+  { label: "Import", href: "/ops/import" },
   { label: "Conversations" }, // Phase 6
   { label: "Opportunities" }, // Phase 7
   { label: "Consultants" }, // Phase 7

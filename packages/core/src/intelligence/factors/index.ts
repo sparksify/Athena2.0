@@ -1,15 +1,15 @@
-import type { ScoringFactor } from "../types.js";
-import { contactability } from "./contactability.js";
-import { cqCompletion } from "./cq-completion.js";
-import { financialBand } from "./financial-band.js";
-import { geography } from "./geography.js";
-import { interestKnown } from "./interest-known.js";
-import { priorAppointment } from "./prior-appointment.js";
-import { priorEngagement } from "./prior-engagement.js";
-import { priorOptOut } from "./prior-opt-out.js";
-import { recency } from "./recency.js";
-import { showNoShow } from "./show-no-show.js";
-import { sourceQuality } from "./source-quality.js";
+import type { ScoringFactor } from "../types";
+import { contactability } from "./contactability";
+import { cqCompletion } from "./cq-completion";
+import { financialBand } from "./financial-band";
+import { geography } from "./geography";
+import { interestKnown } from "./interest-known";
+import { priorAppointment } from "./prior-appointment";
+import { priorEngagement } from "./prior-engagement";
+import { priorOptOut } from "./prior-opt-out";
+import { recency } from "./recency";
+import { showNoShow } from "./show-no-show";
+import { sourceQuality } from "./source-quality";
 
 /** Evaluation order is presentation order in the explanation table. */
 export const FACTORS: ScoringFactor[] = [

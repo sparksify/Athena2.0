@@ -1,6 +1,6 @@
 import { candidate, identityReview } from "@athena/db/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { EmitTx } from "../events/emit.js";
+import type { EmitTx } from "../events/emit";
 
 type Db = EmitTx & {
   transaction: <T>(fn: (tx: EmitTx) => Promise<T>) => Promise<T>;

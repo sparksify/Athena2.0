@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 const QUALITY: Record<string, number> = {
   referral: 7,

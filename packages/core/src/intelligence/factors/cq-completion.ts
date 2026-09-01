@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** A completed franchise questionnaire is the strongest historical intent signal. Max 15. */
 export const cqCompletion: ScoringFactor = (ctx) => {

@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** A locatable candidate is routable and matchable. Max 5.
  *  (Territory availability joins this factor in Phase 8.) */

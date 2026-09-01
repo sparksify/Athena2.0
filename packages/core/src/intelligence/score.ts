@@ -13,9 +13,9 @@ import {
   suppression,
 } from "@athena/db/schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { EmitTx } from "../events/emit.js";
-import { FACTORS } from "./factors/index.js";
-import type { FactorResult, ScoringContext } from "./types.js";
+import type { EmitTx } from "../events/emit";
+import { FACTORS } from "./factors/index";
+import type { FactorResult, ScoringContext } from "./types";
 
 type Db = EmitTx & {
   transaction: <T>(fn: (tx: EmitTx) => Promise<T>) => Promise<T>;

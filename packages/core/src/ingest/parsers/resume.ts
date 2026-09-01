@@ -1,5 +1,5 @@
-import { normalizeEmail, normalizeName, normalizePhone, normalizeState } from "../normalize.js";
-import type { SourceParser } from "../types.js";
+import { normalizeEmail, normalizeName, normalizePhone, normalizeState } from "../normalize";
+import type { SourceParser } from "../types";
 
 /**
  * Resume / job-board exports. Typical columns: Name or First/Last, Email,

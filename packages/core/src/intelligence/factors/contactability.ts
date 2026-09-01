@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** Can we actually reach them? Max 10. Reads verification results, never guesses. */
 export const contactability: ScoringFactor = (ctx) => {

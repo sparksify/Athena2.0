@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 const DAY = 86_400_000;
 

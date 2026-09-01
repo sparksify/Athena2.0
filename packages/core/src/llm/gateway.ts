@@ -1,7 +1,7 @@
 import type { LlmProvider, LlmRequest, LlmResponse } from "@athena/contracts";
 import { costRecord } from "@athena/db/schema";
 import { Langfuse } from "langfuse";
-import type { EmitTx } from "../events/emit.js";
+import type { EmitTx } from "../events/emit";
 
 export interface GatewayCallContext {
   orgId: string;

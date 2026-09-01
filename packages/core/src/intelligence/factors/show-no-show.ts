@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** Did they show for appointments they booked? ±5. Reads meeting payload.outcome. */
 export const showNoShow: ScoringFactor = (ctx) => {

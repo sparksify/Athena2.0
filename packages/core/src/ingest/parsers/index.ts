@@ -1,7 +1,7 @@
-import type { SourceParser } from "../types.js";
-import { parsePurchased } from "./purchased.js";
-import { parseResume } from "./resume.js";
-import { parseTradeshow } from "./tradeshow.js";
+import type { SourceParser } from "../types";
+import { parsePurchased } from "./purchased";
+import { parseResume } from "./resume";
+import { parseTradeshow } from "./tradeshow";
 
 export const PARSERS: Record<string, SourceParser> = {
   resume: parseResume,

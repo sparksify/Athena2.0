@@ -9,10 +9,10 @@ import {
   sourceRecord,
 } from "@athena/db/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { EmitTx } from "../events/emit.js";
-import { contentHash } from "./normalize.js";
-import { PARSERS } from "./parsers/index.js";
-import type { ParsedRecord } from "./types.js";
+import type { EmitTx } from "../events/emit";
+import { contentHash } from "./normalize";
+import { PARSERS } from "./parsers/index";
+import type { ParsedRecord } from "./types";
 
 type Db = EmitTx & {
   transaction: <T>(fn: (tx: EmitTx) => Promise<T>) => Promise<T>;

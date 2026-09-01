@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 const INBOUND = new Set(["email_reply", "call", "meeting"]);
 

@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** A suppressed identifier floors the score: never worth contacting. */
 export const priorOptOut: ScoringFactor = (ctx) => {

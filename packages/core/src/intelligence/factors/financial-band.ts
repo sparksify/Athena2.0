@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** Known liquidity band. Max 15. Unknown scores 0 with an honest reason. */
 export const financialBand: ScoringFactor = (ctx) => {

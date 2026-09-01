@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 const INTEREST_KEYS = ["franchise_interest", "industries_considered", "brands_presented"];
 

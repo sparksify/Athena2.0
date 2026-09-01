@@ -1,4 +1,4 @@
-import type { ScoringFactor } from "../types.js";
+import type { ScoringFactor } from "../types";
 
 /** Ever got as far as a scheduled meeting with a consultant. Max 8. */
 export const priorAppointment: ScoringFactor = (ctx) => {
