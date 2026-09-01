@@ -16,10 +16,15 @@ export async function testDb() {
     create role authenticated;
     create role service_role;
   `);
-  for (const dir of ["migrations", "policies"]) {
-    for (const f of readdirSync(resolve(dbPkgRoot, dir)).filter((x) => x.endsWith(".sql")).sort()) {
-      await client.exec(readFileSync(resolve(dbPkgRoot, dir, f), "utf8"));
-    }
+  const files = ["migrations", "policies"]
+    .flatMap((dir) =>
+      readdirSync(resolve(dbPkgRoot, dir))
+        .filter((x) => x.endsWith(".sql"))
+        .map((f) => ({ name: f, path: resolve(dbPkgRoot, dir, f) })),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name)); // global order across dirs
+  for (const f of files) {
+    await client.exec(readFileSync(f.path, "utf8"));
   }
   const db = drizzle(client, { schema });
   return { db, client };

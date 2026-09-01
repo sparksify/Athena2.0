@@ -24,11 +24,11 @@ describe("migrations", () => {
       .flatMap((dir) =>
         readdirSync(resolve(pkgRoot, dir))
           .filter((f) => f.endsWith(".sql"))
-          .map((f) => resolve(pkgRoot, dir, f)),
+          .map((f) => ({ name: f, path: resolve(pkgRoot, dir, f) })),
       )
-      .sort();
+      .sort((a, b) => a.name.localeCompare(b.name)); // global order across dirs
     for (const file of files) {
-      await db.exec(readFileSync(file, "utf8"));
+      await db.exec(readFileSync(file.path, "utf8"));
     }
 
     const { rows } = await db.query<{ tablename: string }>(
@@ -37,8 +37,12 @@ describe("migrations", () => {
     expect(rows.map((r) => r.tablename)).toEqual([
       "agent_job",
       "candidate",
+      "candidate_source_link",
       "cost_record",
+      "email_verification",
       "event",
+      "identifier",
+      "import_batch",
       "org",
       "prompt_version",
       "source_record",

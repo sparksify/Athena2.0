@@ -41,6 +41,8 @@ export const candidate = pgTable(
     fullName: text("full_name"),
     primaryEmail: text("primary_email"),
     primaryPhone: text("primary_phone"),
+    city: text("city"),
+    state: text("state"),
     status: text("status").notNull().default("new"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -54,9 +56,10 @@ export const sourceRecord = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: uuid("org_id").notNull().references(() => org.id),
     sourceType: text("source_type").notNull(),
-    sourceBatchId: text("source_batch_id"),
+    sourceBatchId: uuid("source_batch_id").references(() => importBatch.id),
     contentHash: text("content_hash").notNull(),
     payload: jsonb("payload").notNull(),
+    normalized: jsonb("normalized"),
     importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("source_record_org_hash_idx").on(t.orgId, t.contentHash)],
@@ -136,6 +139,73 @@ export const suppression = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("suppression_org_channel_identifier_idx").on(t.orgId, t.channel, t.identifier)],
+);
+
+export const importBatch = pgTable("import_batch", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id),
+  sourceType: text("source_type").notNull(),
+  filename: text("filename").notNull(),
+  status: text("status", { enum: ["running", "completed", "failed"] })
+    .notNull()
+    .default("running"),
+  report: jsonb("report"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const candidateSourceLink = pgTable(
+  "candidate_source_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    sourceRecordId: uuid("source_record_id").notNull().references(() => sourceRecord.id),
+    confidence: numeric("confidence").notNull().default("1.0"),
+    method: text("method", { enum: ["exact", "splink", "manual", "agent"] }).notNull(),
+    agentJobId: uuid("agent_job_id").references(() => agentJob.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("candidate_source_link_pair_idx").on(t.candidateId, t.sourceRecordId),
+    index("candidate_source_link_source_idx").on(t.sourceRecordId),
+  ],
+);
+
+// Contact identifiers extracted at import. candidate_id is linked
+// deterministically (exact normalized match) in Phase 1; fuzzy links wait
+// for Phase 2 identity resolution.
+export const identifier = pgTable(
+  "identifier",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").references(() => candidate.id),
+    type: text("type", { enum: ["email", "phone", "linkedin", "postal"] }).notNull(),
+    valueNormalized: text("value_normalized").notNull(),
+    valueRaw: text("value_raw").notNull(),
+    firstSourceRecordId: uuid("first_source_record_id").references(() => sourceRecord.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("identifier_org_type_value_idx").on(t.orgId, t.type, t.valueNormalized),
+    index("identifier_candidate_idx").on(t.candidateId),
+  ],
+);
+
+export const emailVerification = pgTable(
+  "email_verification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    identifierId: uuid("identifier_id").notNull().references(() => identifier.id),
+    provider: text("provider").notNull(),
+    result: text("result", { enum: ["valid", "invalid", "risky", "unknown"] }).notNull(),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+    raw: jsonb("raw").notNull().default({}),
+  },
+  (t) => [index("email_verification_identifier_idx").on(t.identifierId)],
 );
 
 export const promptVersion = pgTable(

@@ -10,17 +10,25 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "db:generate": "pnpm --filter @athena/db generate",
-    "db:migrate": "pnpm --filter @athena/db migrate"
+    "db:migrate": "pnpm --filter @athena/db migrate",
+    "import": "tsx scripts/imports/run.ts"
   },
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "@duckdb/node-api": "1.5.5-r.4",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.1",
+    "tsx": "^4.23.13",
     "turbo": "^2.10.12",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0"
+  },
+  "dependencies": {
+    "@athena/core": "workspace:*",
+    "@athena/db": "workspace:*",
+    "@athena/verify-millionverifier": "workspace:*"
   }
 }
