@@ -108,5 +108,36 @@ Nick's priorities require, per consultant:
    assignments/interactions attribute to the agent that made them, so the
    ownership panel can show "Assigned by Sophie" with her avatar as today.
 
-Outstanding (non-blocking): Steve to supply the four persona avatar images
-(from the Athena 1.0 personas assets) so they ship with the Phase 7 UI.
+~~Outstanding (non-blocking): Steve to supply the four persona avatar images~~
+Resolved 2026-09-01: all four persona portraits and all ten consultant
+headshots are committed under `apps/web/public/avatars/`.
+
+## Update — Nick's email, 2026-08-30 (consult-first priorities)
+
+Nick, after reviewing the first Consultant Command preview:
+
+1. **Speed to consultation is the KPI with the most bearing.** Not just
+   first touch — how fast an assigned person gets to a real consultation.
+2. **A CQ must be in hand before the consult.**
+3. **The magic number is three real consults per consultant per week.**
+   Real = a deep dive into the person and what they're looking to do, not a
+   check-in call.
+4. The **first substantive conversation** differs for a lead we marketed a
+   specific brand to versus a general inquiry; he wants to define that
+   conversation and track the activities that cause the deal from there.
+
+## Decisions (Steve, 2026-09-01, second round)
+
+5. **Consult clock starts at assignment.** Speed to consultation is
+   measured assignment → completed consult, so it measures what the
+   consultant controls and pairs with the 48h first-touch SLA.
+6. **Real consult = completed consultation-type appointment with a logged
+   disposition.** Deterministic; rides on the Phase 7
+   `appointment`/`disposition` model. Weekly target: 3 per consultant.
+7. **CQ-before-consult is tracked and chased now, hard-gated later.** The
+   dashboard shows CQ compliance per consultant and flags upcoming
+   consults missing a CQ; the booking hard-gate (no consult scheduled
+   until CQ received) is the Phase 7 rule.
+8. **Brand-marketed vs. general leads stay blended for now.** Revisit the
+   split when the first-substantive-conversation tracking (item 4 above)
+   gets designed with Nick.
