@@ -121,7 +121,7 @@ function Spark({ id, points, color }: { id: string; points: number[]; color: str
   );
 }
 
-function HeroIcon({ color, size = 36, children }: { color: string; size?: number; children: ReactNode }) {
+function HeroIcon({ color, size = 36, glow = true, children }: { color: string; size?: number; glow?: boolean; children: ReactNode }) {
   return (
     <span
       className="flex shrink-0 items-center justify-center rounded-xl border"
@@ -131,8 +131,8 @@ function HeroIcon({ color, size = 36, children }: { color: string; size?: number
         color,
         borderColor: `${color}66`,
         background: `linear-gradient(145deg, ${color}30, ${color}0d)`,
-        boxShadow: `0 0 18px ${color}1c, inset 0 1px 0 rgba(255,255,255,0.10)`,
-        filter: `drop-shadow(0 0 4px ${color}3a)`,
+        boxShadow: glow ? `0 0 18px ${color}1c, inset 0 1px 0 rgba(255,255,255,0.10)` : "inset 0 1px 0 rgba(255,255,255,0.10)",
+        filter: glow ? `drop-shadow(0 0 4px ${color}3a)` : undefined,
       }}
     >
       <svg
@@ -491,9 +491,8 @@ export default async function ConsultantsPreviewPage() {
         </section>
 
         <section className={`${CARD} border-red-400/20 p-5`} style={{ background: "linear-gradient(160deg, #1E1420 0%, #171323 40%, #121826 100%)" }}>
-          <Glow className="-right-16 -top-16 h-56 w-56 opacity-[0.17]" color="#EF4444" />
           <div className="relative">
-            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.28)]">
+            <div className="flex items-center gap-2 text-red-400">
               <InlineIcon size={15}>{ICON.bell}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Needs attention</h2>
             </div>
@@ -507,15 +506,15 @@ export default async function ConsultantsPreviewPage() {
                   className="flex items-center gap-3 rounded-xl border border-red-400/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                   style={{ background: "linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))" }}
                 >
-                  <HeroIcon color="#F87171" size={40}>{a.icon}</HeroIcon>
-                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.34)]" style={{ fontVariantNumeric: num }}>
+                  <HeroIcon color="#F87171" size={40} glow={false}>{a.icon}</HeroIcon>
+                  <span className="text-2xl font-bold text-red-400" style={{ fontVariantNumeric: num }}>
                     {a.count}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-white">{a.title}</span>
                     <span className="block text-[11px] text-[#8B95A7]">{a.sub}</span>
                   </span>
-                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.14),inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                     Review
                   </span>
                 </div>
@@ -878,60 +877,14 @@ export default async function ConsultantsPreviewPage() {
         </div>
       </section>
 
-      {/* ownership + agents */}
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
-        <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
-            Consultant ownership
-          </h2>
-          <p className="mt-1 text-xs text-[#64748B]">
-            Who owns each visible opportunity, who assigned it, and whether it&apos;s moving.
-          </p>
-          <div className="mt-3 space-y-4">
-            {OWNERSHIP.map((group) => (
-              <div key={group.consultant} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2.5">
-                    <PersonAvatar src={consultantAvatar(group.consultant)} alt={group.consultant} size={32} />
-                    <span className="font-medium text-[#E7ECF3]">{group.consultant}</span>
-                  </span>
-                  <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-300" style={{ fontVariantNumeric: num }}>
-                    {group.leads.length} shown
-                  </span>
-                </div>
-                <ul className="mt-2 divide-y divide-[#1A2130]">
-                  {group.leads.map((l) => (
-                    <li key={l.email} className="grid grid-cols-2 items-center gap-2 py-2 md:grid-cols-[1.4fr_1fr_1fr_0.9fr_0.6fr]">
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm text-[#E7ECF3]">{l.lead}</span>
-                        <span className="block truncate text-[11px] text-[#64748B]">{l.email}</span>
-                      </span>
-                      <span className="truncate text-xs text-[#8B95A7]">{l.brand}</span>
-                      <span className="flex items-center gap-1.5 text-xs text-[#8B95A7]">
-                        <AgentAvatar name={l.agent} size={18} />
-                        <span className="truncate">Assigned by {l.agent}</span>
-                      </span>
-                      <span className="text-xs text-[#C3CCDB]">
-                        {l.stage}
-                        <span className="block text-[10px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
-                          {l.daysInStage}d in stage
-                        </span>
-                      </span>
-                      <span className="justify-self-start md:justify-self-end"><SlaBadge sla={l.sla} /></span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-
+      {/* AI agents */}
+      <div className="mt-6">
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">AI agents</h2>
           <p className="mt-1 text-xs text-[#64748B]">
             Persistent agents with their persona portraits.
           </p>
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {AGENTS.map((a) => (
               <li key={a.name} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
                 <div className="flex items-center gap-3">
