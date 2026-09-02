@@ -34,6 +34,8 @@ const CQ_BADGE: Record<CqStatus, { label: string; cls: string }> = {
 };
 
 const STAGE_COLORS = ["#6366F1", "#818CF8", "#38BDF8", "#22D3EE", "#2DD4BF", "#34D399", "#A3E635", "#F59E0B"];
+/* Card accents from the stage-mix mockup (bar keeps STAGE_COLORS). */
+const STAGE_CARD_COLORS = ["#818CF8", "#EAB308", "#38BDF8", "#2DD4BF", "#22D3EE", "#34D399", "#A3E635", "#F59E0B"];
 
 function SlaBadge({ sla }: { sla: SlaState }) {
   return (
@@ -229,6 +231,7 @@ const ICON = {
     </>
   ),
   funnel: <path d="M22 3H2l8 9.46V19l4 2v-8.54z" />,
+  layers: <path d="M4 6h16M7 12h10M10 18h4" />,
   chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   trend: (
     <>
@@ -661,6 +664,67 @@ export default async function ConsultantsPreviewPage() {
         </div>
       </section>
 
+      {/* CRM stage mix */}
+      <section className={`${CARD} mt-4 p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <HeroIcon color="#818CF8" size={42}>{ICON.layers}</HeroIcon>
+            <h2 className="text-[15px] font-bold uppercase tracking-[0.2em] text-white">CRM stage mix</h2>
+          </div>
+          <span className="flex items-center gap-2 text-sm text-[#8B95A7]" style={{ fontVariantNumeric: num }}>
+            <span className="h-2.5 w-2.5 rounded-full bg-indigo-400/70" />
+            {totalStage} opportunities in scope
+          </span>
+        </div>
+        <div className="mt-5 flex h-9 overflow-hidden rounded-lg bg-[#1B2333]">
+          {STAGES.map((s, i) =>
+            STAGE_MIX[s] > 0 ? (
+              <div
+                key={s}
+                className="border-r border-black/25 last:border-r-0"
+                style={{ width: `${(STAGE_MIX[s] / totalStage) * 100}%`, backgroundColor: STAGE_COLORS[i] }}
+                title={`${s}: ${STAGE_MIX[s]}`}
+              />
+            ) : null,
+          )}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+          {STAGES.map((s, i) => {
+            const n = STAGE_MIX[s];
+            const pct = totalStage > 0 ? (n / totalStage) * 100 : 0;
+            const c = STAGE_CARD_COLORS[i] ?? "#818CF8";
+            return (
+              <div
+                key={s}
+                className="flex flex-col rounded-xl border p-4"
+                style={{ borderColor: `${c}59`, backgroundColor: `${c}0a` }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[13px] text-[#E7ECF3]">{s}</span>
+                  <span className="shrink-0 rounded-md border border-indigo-400/50 bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-indigo-300">
+                    Live
+                  </span>
+                </div>
+                <div className="mt-3 text-[40px] font-bold leading-none text-white" style={{ fontVariantNumeric: num }}>
+                  {n}
+                </div>
+                <div className="mt-3 text-[13px] leading-snug text-[#8B95A7]" style={{ fontVariantNumeric: num }}>
+                  <span className="font-semibold" style={{ color: c }}>{pct.toFixed(1)}%</span> of visible CRM opportunities
+                </div>
+                <div className="mt-auto pt-4">
+                  <div className="h-1.5 rounded-full bg-[#1B2333]">
+                    <div
+                      className="h-1.5 rounded-full"
+                      style={{ width: `${n > 0 ? Math.max(pct, 5) : 0}%`, backgroundColor: c }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* leaderboard + CQ gate */}
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
@@ -846,34 +910,6 @@ export default async function ConsultantsPreviewPage() {
             );
           })}
         </ul>
-      </section>
-
-      {/* stage mix bar */}
-      <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">CRM stage mix</h2>
-          <span className="text-[11px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
-            {totalStage} opportunities in scope
-          </span>
-        </div>
-        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-[#1B2333]">
-          {STAGES.map((s, i) =>
-            STAGE_MIX[s] > 0 ? (
-              <div key={s} style={{ width: `${(STAGE_MIX[s] / totalStage) * 100}%`, backgroundColor: STAGE_COLORS[i] }} />
-            ) : null,
-          )}
-        </div>
-        <div className="mt-3 grid grid-cols-4 gap-x-2 gap-y-2 md:grid-cols-8">
-          {STAGES.map((s, i) => (
-            <div key={s} className="text-center">
-              <div className="text-sm font-semibold" style={{ fontVariantNumeric: num }}>{STAGE_MIX[s]}</div>
-              <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] uppercase tracking-wide text-[#64748B]">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: STAGE_COLORS[i] }} />
-                {s}
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* AI agents */}
