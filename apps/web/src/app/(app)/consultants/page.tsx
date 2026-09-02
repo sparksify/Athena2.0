@@ -113,7 +113,7 @@ function Spark({ id, points, color }: { id: string; points: number[]; color: str
         </filter>
       </defs>
       <path d={`${path} L${lastX},${h} L0,${h} Z`} fill={`url(#${id}-fill)`} />
-      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.38} filter={`url(#${id}-glow)`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.28} filter={`url(#${id}-glow)`} />
       <path d={path} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={lastX} cy={lastY} r={3.2} fill={color} opacity={0.35} />
       <circle cx={lastX} cy={lastY} r={1.8} fill="#fff" />
@@ -131,8 +131,8 @@ function HeroIcon({ color, size = 36, children }: { color: string; size?: number
         color,
         borderColor: `${color}66`,
         background: `linear-gradient(145deg, ${color}30, ${color}0d)`,
-        boxShadow: `0 0 18px ${color}26, inset 0 1px 0 rgba(255,255,255,0.10)`,
-        filter: `drop-shadow(0 0 4px ${color}4d)`,
+        boxShadow: `0 0 18px ${color}1c, inset 0 1px 0 rgba(255,255,255,0.10)`,
+        filter: `drop-shadow(0 0 4px ${color}3a)`,
       }}
     >
       <svg
@@ -283,7 +283,7 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           strokeWidth={20}
           strokeLinecap="round"
           strokeDasharray={dash(len)}
-          opacity={0.41}
+          opacity={0.31}
           filter="url(#goal-bloom)"
         />
         {/* progress arc */}
@@ -304,12 +304,12 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 text-cyan-200"
           style={{
             background: "linear-gradient(180deg, #16213A, #0F1522)",
-            boxShadow: "0 0 22px rgba(34,211,238,0.22), inset 0 1px 0 rgba(255,255,255,0.10)",
+            boxShadow: "0 0 22px rgba(34,211,238,0.17), inset 0 1px 0 rgba(255,255,255,0.10)",
           }}
         >
           <InlineIcon size={17}>{ICON.trophy}</InlineIcon>
         </span>
-        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.41)]">
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.31)]">
           On track
         </div>
         <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-[#94A0B8]" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -323,6 +323,9 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
     </div>
   );
 }
+
+const PERF_GRID =
+  "grid grid-cols-[minmax(230px,2.1fr)_1fr_1fr_0.8fr_1fr_0.6fr_0.8fr_0.7fr_0.9fr] items-center";
 
 const FUNNEL_STYLE = [
   { color: "#818CF8", icon: ICON.users },
@@ -379,7 +382,7 @@ export default async function ConsultantsPreviewPage() {
       {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.34)]">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.26)]">
             Consultant Command
           </div>
           <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight text-white">
@@ -396,7 +399,7 @@ export default async function ConsultantsPreviewPage() {
               key={s}
               className={`px-3.5 py-1.5 text-xs ${
                 i === 3
-                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.26)]"
+                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.19)]"
                   : "border-l border-white/[0.06] text-[#8B95A7] first:border-l-0"
               }`}
             >
@@ -409,9 +412,9 @@ export default async function ConsultantsPreviewPage() {
       {/* weekly goal + needs attention */}
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
         <section className={`${CARD} border-indigo-400/15 p-6`} style={{ background: "linear-gradient(135deg, #151C38 0%, #131A2E 45%, #111726 100%)" }}>
-          <Glow className="-top-24 right-1/3 h-72 w-72 opacity-30" color="#6366F1" />
-          <Glow className="-bottom-20 left-1/2 h-52 w-52 opacity-[0.18]" color="#22D3EE" />
-          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-15" color="#7C3AED" />
+          <Glow className="-top-24 right-1/3 h-72 w-72 opacity-[0.22]" color="#6366F1" />
+          <Glow className="-bottom-20 left-1/2 h-52 w-52 opacity-[0.14]" color="#22D3EE" />
+          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-[0.11]" color="#7C3AED" />
           <div className="relative grid grid-cols-1 items-center gap-6 md:grid-cols-2 xl:grid-cols-[0.95fr_1.2fr_0.85fr]">
             <div>
               <div className="flex items-center gap-3">
@@ -424,17 +427,17 @@ export default async function ConsultantsPreviewPage() {
                 </div>
               </div>
               <div className="mt-5 flex items-baseline gap-2" style={{ fontVariantNumeric: num }}>
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.26)]">
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.19)]">
                   {KPIS.consultsThisWeek}
                 </span>
                 <span className="text-2xl font-semibold text-[#64748B]">/ {KPIS.consultTargetThisWeek}</span>
               </div>
-              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.34)]" style={{ fontVariantNumeric: num }}>
+              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.26)]" style={{ fontVariantNumeric: num }}>
                 {goalPct}% of target
               </div>
               <div className="mt-3 h-1.5 w-full max-w-[260px] rounded-full bg-[#0D1220] shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.41)]"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.31)]"
                   style={{ width: `${goalPct}%` }}
                 />
               </div>
@@ -459,7 +462,7 @@ export default async function ConsultantsPreviewPage() {
                         className="block rounded-full p-[2px]"
                         style={{
                           background: i === 0 ? "linear-gradient(135deg, #6366F1, #22D3EE)" : "rgba(255,255,255,0.10)",
-                          boxShadow: i === 0 ? "0 0 14px rgba(34,211,238,0.26)" : "none",
+                          boxShadow: i === 0 ? "0 0 14px rgba(34,211,238,0.19)" : "none",
                         }}
                       >
                         <PersonAvatar src={cn.avatar} alt={cn.name} size={44} />
@@ -488,9 +491,9 @@ export default async function ConsultantsPreviewPage() {
         </section>
 
         <section className={`${CARD} border-red-400/20 p-5`} style={{ background: "linear-gradient(160deg, #1E1420 0%, #171323 40%, #121826 100%)" }}>
-          <Glow className="-right-16 -top-16 h-56 w-56 opacity-[0.22]" color="#EF4444" />
+          <Glow className="-right-16 -top-16 h-56 w-56 opacity-[0.17]" color="#EF4444" />
           <div className="relative">
-            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.38)]">
+            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.28)]">
               <InlineIcon size={15}>{ICON.bell}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Needs attention</h2>
             </div>
@@ -505,14 +508,14 @@ export default async function ConsultantsPreviewPage() {
                   style={{ background: "linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))" }}
                 >
                   <HeroIcon color="#F87171" size={40}>{a.icon}</HeroIcon>
-                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.45)]" style={{ fontVariantNumeric: num }}>
+                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.34)]" style={{ fontVariantNumeric: num }}>
                     {a.count}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-white">{a.title}</span>
                     <span className="block text-[11px] text-[#8B95A7]">{a.sub}</span>
                   </span>
-                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.19),inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.14),inset_0_1px_0_rgba(255,255,255,0.06)]">
                     Review
                   </span>
                 </div>
@@ -527,7 +530,7 @@ export default async function ConsultantsPreviewPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {heroKpis.map((k, i) => (
           <div key={k.label} className={`${CARD} p-4`}>
-            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.09]" color={k.color} />
+            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.07]" color={k.color} />
             <div className="relative flex items-center gap-3">
               <HeroIcon color={k.color} size={40}>{k.icon}</HeroIcon>
               <div className="min-w-0 flex-1">
@@ -556,15 +559,15 @@ export default async function ConsultantsPreviewPage() {
 
       {/* Athena briefing */}
       <section className={`${CARD} mt-4 border-indigo-400/20 p-5`} style={{ background: "linear-gradient(90deg, #121A38 0%, #141B3C 55%, #171A40 100%)" }}>
-        <Glow className="-left-20 -top-24 h-64 w-64 opacity-[0.22]" color="#6366F1" />
-        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-15" color="#8B5CF6" />
+        <Glow className="-left-20 -top-24 h-64 w-64 opacity-[0.17]" color="#6366F1" />
+        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-[0.11]" color="#8B5CF6" />
         <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.45)]">
+            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.34)]">
               <InlineIcon size={15}>{ICON.sparkles}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Athena briefing</h2>
             </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.22)]">
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.17)]">
               Demo
             </span>
           </div>
@@ -589,10 +592,10 @@ export default async function ConsultantsPreviewPage() {
         </div>
       </section>
 
-      {/* assignment → consultation funnel */}
+      {/* assignment → consultation funnel — flat, no gradients */}
       <section className={`${CARD} mt-4 p-5`}>
         <div className="flex items-baseline justify-between gap-3">
-          <div className="flex items-center gap-2 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.38)]">
+          <div className="flex items-center gap-2 text-indigo-400">
             <InlineIcon size={14}>{ICON.funnel}</InlineIcon>
             <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">
               Assignment → Consultation Funnel
@@ -600,8 +603,8 @@ export default async function ConsultantsPreviewPage() {
           </div>
           <span className="text-[11px] text-[#64748B]">medians are elapsed time from assignment</span>
         </div>
-        <div className="overflow-x-auto pb-1 pt-1">
-          <div className="mt-3 flex min-w-[900px] gap-1.5">
+        <div className="overflow-x-auto pb-1">
+          <div className="mt-4 flex min-w-[900px] gap-1.5">
             {CONSULT_FUNNEL.map((step, i) => {
               const s = FUNNEL_STYLE[i] ?? FUNNEL_STYLE[0];
               const first = i === 0;
@@ -612,33 +615,21 @@ export default async function ConsultantsPreviewPage() {
                   ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 16px 50%)"
                   : "polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%)";
               return (
-                <div key={step.label} className="flex-1" style={{ filter: `drop-shadow(0 0 10px ${s.color}30)` }}>
-                  {/* outer = glowing 1px border, inner = fill */}
-                  <div style={{ clipPath: clip, padding: 1, background: `linear-gradient(90deg, ${s.color}66, ${s.color}b3)` }}>
+                <div key={step.label} className="flex-1">
+                  {/* outer = 1px border in the stage color, inner = flat fill */}
+                  <div style={{ clipPath: clip, padding: 1, backgroundColor: `${s.color}59` }}>
                     <div
                       className="px-6 py-3.5"
-                      style={{
-                        clipPath: clip,
-                        background: `linear-gradient(135deg, ${s.color}3d 0%, ${s.color}1a 55%, #121826 100%)`,
-                      }}
+                      style={{ clipPath: clip, backgroundColor: `color-mix(in srgb, ${s.color} 9%, #0F1522)` }}
                     >
                       <div className="flex items-center gap-2.5">
                         <span
                           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold"
-                          style={{
-                            borderColor: `${s.color}99`,
-                            color: s.color,
-                            background: `${s.color}26`,
-                            boxShadow: `0 0 10px ${s.color}4d`,
-                            fontVariantNumeric: num,
-                          }}
+                          style={{ borderColor: `${s.color}80`, color: s.color, backgroundColor: `${s.color}1f`, fontVariantNumeric: num }}
                         >
                           {i + 1}
                         </span>
-                        <span
-                          className="text-[28px] font-bold leading-none text-white"
-                          style={{ fontVariantNumeric: num, textShadow: `0 0 18px ${s.color}60` }}
-                        >
+                        <span className="text-[28px] font-bold leading-none text-white" style={{ fontVariantNumeric: num }}>
                           {step.count}
                         </span>
                         <span className="text-xs font-semibold" style={{ color: s.color, fontVariantNumeric: num }}>
@@ -675,43 +666,46 @@ export default async function ConsultantsPreviewPage() {
       {/* leaderboard + CQ gate */}
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
-            Consultant performance
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
+              Consultant performance
+            </h2>
+            <span className="text-[11px] text-[#64748B]">click a consultant to see their clients</span>
+          </div>
           <div className="overflow-x-auto">
-            <table className="mt-3 w-full min-w-[760px] text-sm">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-[#64748B]">
-                  <th className="pb-2 font-semibold">Consultant</th>
-                  <th className="pb-2 font-semibold">Consults / wk</th>
-                  <th className="pb-2 font-semibold">Speed to consult</th>
-                  <th className="pb-2 font-semibold">CQ first</th>
-                  <th className="pb-2 font-semibold">First touch</th>
-                  <th className="pb-2 font-semibold">Show</th>
-                  <th className="pb-2 font-semibold">Revenue</th>
-                  <th className="pb-2 font-semibold">Load</th>
-                  <th className="pb-2 font-semibold">SLA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {CONSULTANTS.map((cn) => {
-                  const overloaded = cn.load[0] > cn.load[1];
-                  return (
-                    <tr key={cn.name} className="border-t border-[#1A2130]">
-                      <td className="py-2.5 pr-3">
-                        <span className="flex items-center gap-2.5">
-                          <PersonAvatar src={cn.avatar} alt={cn.name} size={32} />
-                          <span className="min-w-0">
-                            <span className="block whitespace-nowrap text-[#E7ECF3]">{cn.name}</span>
-                            <span className="block max-w-[190px] truncate text-[11px] text-[#64748B]">{cn.brands}</span>
-                          </span>
+            <div className="mt-3 min-w-[760px] text-sm">
+              <div className={`${PERF_GRID} pb-2 text-[10px] uppercase tracking-wider text-[#64748B]`}>
+                <span className="font-semibold">Consultant</span>
+                <span className="font-semibold">Consults / wk</span>
+                <span className="font-semibold">Speed to consult</span>
+                <span className="font-semibold">CQ first</span>
+                <span className="font-semibold">First touch</span>
+                <span className="font-semibold">Show</span>
+                <span className="font-semibold">Revenue</span>
+                <span className="font-semibold">Load</span>
+                <span className="font-semibold">SLA</span>
+              </div>
+              {CONSULTANTS.map((cn) => {
+                const overloaded = cn.load[0] > cn.load[1];
+                const leads = OWNERSHIP.find((g) => g.consultant === cn.name)?.leads ?? [];
+                return (
+                  <details key={cn.name} className="group border-t border-[#1A2130]">
+                    <summary className={`${PERF_GRID} cursor-pointer list-none py-2.5 transition-colors hover:bg-white/[0.02] group-open:bg-white/[0.03] [&::-webkit-details-marker]:hidden`}>
+                      <span className="flex items-center gap-2.5 pr-3">
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#64748B] transition-transform group-open:rotate-90">
+                          <InlineIcon size={12}><path d="m9 6 6 6-6 6" /></InlineIcon>
                         </span>
-                      </td>
-                      <td className="py-2.5"><ConsultPace count={cn.consultsThisWeek} /></td>
-                      <td className="py-2.5 text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>
+                        <PersonAvatar src={cn.avatar} alt={cn.name} size={32} />
+                        <span className="min-w-0">
+                          <span className="block whitespace-nowrap text-[#E7ECF3]">{cn.name}</span>
+                          <span className="block max-w-[170px] truncate text-[11px] text-[#64748B]">{cn.brands}</span>
+                        </span>
+                      </span>
+                      <span><ConsultPace count={cn.consultsThisWeek} /></span>
+                      <span className="text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>
                         {cn.speedToConsult ?? <span className="text-red-400">—</span>}
-                      </td>
-                      <td className="py-2.5">
+                      </span>
+                      <span>
                         {cn.cqBeforeConsult === null ? (
                           <span className="text-xs text-[#64748B]">—</span>
                         ) : (
@@ -719,19 +713,55 @@ export default async function ConsultantsPreviewPage() {
                             {cn.cqBeforeConsult}%
                           </span>
                         )}
-                      </td>
-                      <td className="py-2.5 text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>{cn.firstTouch}</td>
-                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{cn.showRate}%</td>
-                      <td className="py-2.5" style={{ fontVariantNumeric: num }}>{money(cn.revenue)}</td>
-                      <td className={`py-2.5 ${overloaded ? "text-red-400" : "text-[#C3CCDB]"}`} style={{ fontVariantNumeric: num }}>
+                      </span>
+                      <span className="text-[#C3CCDB]" style={{ fontVariantNumeric: num }}>{cn.firstTouch}</span>
+                      <span style={{ fontVariantNumeric: num }}>{cn.showRate}%</span>
+                      <span style={{ fontVariantNumeric: num }}>{money(cn.revenue)}</span>
+                      <span className={overloaded ? "text-red-400" : "text-[#C3CCDB]"} style={{ fontVariantNumeric: num }}>
                         {cn.load[0]} / {cn.load[1]}
-                      </td>
-                      <td className="py-2.5"><SlaBadge sla={cn.sla} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </span>
+                      <span><SlaBadge sla={cn.sla} /></span>
+                    </summary>
+                    <div className="mb-3 ml-7 rounded-lg border border-[#1E2635] bg-[#0F1522] p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">
+                          {cn.name}&apos;s clients
+                        </span>
+                        <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-xs font-semibold text-indigo-300" style={{ fontVariantNumeric: num }}>
+                          {leads.length} shown of {cn.contacted}
+                        </span>
+                      </div>
+                      {leads.length === 0 ? (
+                        <p className="mt-2 text-xs text-[#64748B]">No clients loaded in this preview.</p>
+                      ) : (
+                        <ul className="mt-1 divide-y divide-[#1A2130]">
+                          {leads.map((l) => (
+                            <li key={l.email} className="grid grid-cols-2 items-center gap-2 py-2 md:grid-cols-[1.4fr_1fr_1fr_0.9fr_0.6fr]">
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm text-[#E7ECF3]">{l.lead}</span>
+                                <span className="block truncate text-[11px] text-[#64748B]">{l.email}</span>
+                              </span>
+                              <span className="truncate text-xs text-[#8B95A7]">{l.brand}</span>
+                              <span className="flex items-center gap-1.5 text-xs text-[#8B95A7]">
+                                <AgentAvatar name={l.agent} size={18} />
+                                <span className="truncate">Assigned by {l.agent}</span>
+                              </span>
+                              <span className="text-xs text-[#C3CCDB]">
+                                {l.stage}
+                                <span className="block text-[10px] text-[#64748B]" style={{ fontVariantNumeric: num }}>
+                                  {l.daysInStage}d in stage
+                                </span>
+                              </span>
+                              <span className="justify-self-start md:justify-self-end"><SlaBadge sla={l.sla} /></span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
           </div>
           <p className="mt-3 text-[11px] text-[#64748B]">
             Real consult = completed consultation appointment with a logged disposition. Routing rewards
@@ -784,31 +814,36 @@ export default async function ConsultantsPreviewPage() {
         </section>
       </div>
 
-      {/* take-back queue */}
+      {/* take-back queue — framed around the consultant we're reclaiming from */}
       <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
         <div className="flex items-baseline justify-between">
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
             Take-back queue (48h rule)
           </h2>
-          <span className="text-[11px] text-[#64748B]">no first touch → reclaimed and rerouted, allocation drops</span>
+          <span className="text-[11px] text-[#64748B]">no first touch → reclaimed from the consultant and rerouted, their allocation drops</span>
         </div>
         <ul className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4">
           {TAKE_BACK_QUEUE.map((r) => {
             const past = r.hoursSinceAssign >= 48;
             return (
-              <li key={r.lead} className="rounded-lg border border-[#1E2635] bg-[#0F1522] px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-[#E7ECF3]">{r.lead}</span>
-                  <span className={`shrink-0 text-xs font-semibold ${past ? "text-red-400" : "text-amber-400"}`} style={{ fontVariantNumeric: num }}>
-                    {past ? "reclaiming now" : `${48 - r.hoursSinceAssign}h left`}
+              <li key={r.lead} className={`flex items-center gap-3 rounded-lg border bg-[#0F1522] px-3 py-2.5 ${past ? "border-red-500/30" : "border-[#1E2635]"}`}>
+                <span className={`shrink-0 rounded-full p-[2px] ${past ? "bg-red-500/60" : "bg-amber-500/40"}`}>
+                  <PersonAvatar src={consultantAvatar(r.consultant)} alt={r.consultant} size={40} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-[#E7ECF3]">{r.consultant}</span>
+                    <span className={`shrink-0 text-xs font-semibold ${past ? "text-red-400" : "text-amber-400"}`} style={{ fontVariantNumeric: num }}>
+                      {past ? "reclaiming now" : `${48 - r.hoursSinceAssign}h left`}
+                    </span>
                   </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
-                  <span className="truncate">{r.consultant} · no first touch in {r.hoursSinceAssign}h</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    <AgentAvatar name={r.agent} size={14} /> {r.agent}
+                  <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
+                    <span className="truncate">{r.lead} · no first touch in {r.hoursSinceAssign}h</span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      <AgentAvatar name={r.agent} size={14} /> {r.agent}
+                    </span>
                   </span>
-                </div>
+                </span>
               </li>
             );
           })}
