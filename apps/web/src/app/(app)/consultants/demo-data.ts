@@ -139,11 +139,65 @@ export const OWNERSHIP: { consultant: string; leads: DemoLead[] }[] = [
     ],
   },
   {
+    consultant: "Adam Gruen",
+    leads: [
+      { lead: "Priya Natarajan", email: "priya.natarajan@example.com", brand: "Subcontain", agent: "Tim", stage: "Talking to Zors", daysInStage: 3, sla: "on_track" },
+      { lead: "Owen Castellano", email: "owen.castellano@example.com", brand: "4EverCharge", agent: "Sophie", stage: "CQ Sent", daysInStage: 2, sla: "on_track" },
+      { lead: "Lydia Ferris", email: "lydia.ferris@example.com", brand: "CRS", agent: "Claire", stage: "Contact Made", daysInStage: 1, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Paulette Callender",
+    leads: [
+      { lead: "Marcus Reyes", email: "marcus.reyes@example.com", brand: "Complete Mobile Drug Testing", agent: "Tim", stage: "CQ Received", daysInStage: 1, sla: "on_track" },
+      { lead: "Hana Okafor", email: "hana.okafor@example.com", brand: "CRS", agent: "Sophie", stage: "Talking to Zors", daysInStage: 5, sla: "on_track" },
+      { lead: "Tobias Lindqvist", email: "tobias.lindqvist@example.com", brand: "Complete Mobile Drug Testing", agent: "Rina", stage: "Contact Made", daysInStage: 2, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Michael Stavrinakis",
+    leads: [
+      { lead: "Renee Duval", email: "renee.duval@example.com", brand: "4EverCharge", agent: "Tim", stage: "Contact Made", daysInStage: 3, sla: "on_track" },
+      { lead: "Sanjay Mehta", email: "sanjay.mehta@example.com", brand: "FMB Re-engagement", agent: "Claire", stage: "Lead In", daysInStage: 1, sla: "on_track" },
+      { lead: "Gloria Whitfield", email: "gloria.whitfield@example.com", brand: "4EverCharge", agent: "Sophie", stage: "CQ Sent", daysInStage: 4, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Lane Klastow",
+    leads: [
+      { lead: "Curtis Blalock", email: "curtis.blalock@example.com", brand: "CRS", agent: "Tim", stage: "Talking to Zors", daysInStage: 2, sla: "on_track" },
+      { lead: "Devon Price", email: "devon.price@example.com", brand: "4EverCharge", agent: "Tim", stage: "CQ Sent", daysInStage: 3, sla: "on_track" },
+      { lead: "Amira Haddad", email: "amira.haddad@example.com", brand: "Sung Athena", agent: "Rina", stage: "Contact Made", daysInStage: 1, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Dave Sullivan",
+    leads: [
+      { lead: "Beatriz Camargo", email: "beatriz.camargo@example.com", brand: "Resting Rainbow", agent: "Claire", stage: "Contact Made", daysInStage: 2, sla: "on_track" },
+      { lead: "Elliot Sandoval", email: "elliot.sandoval@example.com", brand: "4EverCharge", agent: "Tim", stage: "Lead In", daysInStage: 1, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Mariel Miller",
+    leads: [
+      { lead: "Kwame Boateng", email: "kwame.boateng@example.com", brand: "CRS", agent: "Sophie", stage: "CQ Received", daysInStage: 2, sla: "on_track" },
+      { lead: "Ingrid Solberg", email: "ingrid.solberg@example.com", brand: "Content Recovery Specialists", agent: "Tim", stage: "Contact Made", daysInStage: 4, sla: "on_track" },
+      { lead: "Victor Aldana", email: "victor.aldana@example.com", brand: "CRS", agent: "Rina", stage: "Lead In", daysInStage: 0, sla: "on_track" },
+    ],
+  },
+  {
     consultant: "Stephen Rotay",
     leads: [
       { lead: "Manuel Cerruti", email: "manuel.cerruti@example.com", brand: "Sung Athena", agent: "Tim", stage: "Lead In", daysInStage: 1, sla: "nudged" },
       { lead: "Mikhail Toro", email: "mikhail.toro@example.com", brand: "Subcontain", agent: "Sophie", stage: "Lead In", daysInStage: 1, sla: "nudged" },
       { lead: "Chris Mulvaney", email: "chris.mulvaney@example.com", brand: "4EverCharge", agent: "Rina", stage: "Contact Made", daysInStage: 6, sla: "on_track" },
+    ],
+  },
+  {
+    consultant: "Chris Davenport",
+    leads: [
+      { lead: "Petra Novak", email: "petra.novak@example.com", brand: "4EverCharge", agent: "Sophie", stage: "Lead In", daysInStage: 1, sla: "escalated" },
+      { lead: "Leon Marchetti", email: "leon.marchetti@example.com", brand: "CRS", agent: "Tim", stage: "Contact Made", daysInStage: 7, sla: "on_track" },
     ],
   },
   {
