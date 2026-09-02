@@ -113,7 +113,7 @@ function Spark({ id, points, color }: { id: string; points: number[]; color: str
         </filter>
       </defs>
       <path d={`${path} L${lastX},${h} L0,${h} Z`} fill={`url(#${id}-fill)`} />
-      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.5} filter={`url(#${id}-glow)`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.38} filter={`url(#${id}-glow)`} />
       <path d={path} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={lastX} cy={lastY} r={3.2} fill={color} opacity={0.35} />
       <circle cx={lastX} cy={lastY} r={1.8} fill="#fff" />
@@ -131,8 +131,8 @@ function HeroIcon({ color, size = 36, children }: { color: string; size?: number
         color,
         borderColor: `${color}66`,
         background: `linear-gradient(145deg, ${color}30, ${color}0d)`,
-        boxShadow: `0 0 18px ${color}33, inset 0 1px 0 rgba(255,255,255,0.10)`,
-        filter: `drop-shadow(0 0 4px ${color}66)`,
+        boxShadow: `0 0 18px ${color}26, inset 0 1px 0 rgba(255,255,255,0.10)`,
+        filter: `drop-shadow(0 0 4px ${color}4d)`,
       }}
     >
       <svg
@@ -255,7 +255,7 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
   const frac = Math.min(1, value / target);
   const dash = (l: number) => `${(l * frac).toFixed(1)} ${l.toFixed(1)}`;
   return (
-    <div className="relative mx-auto w-full max-w-[340px]">
+    <div className="relative mx-auto w-full max-w-[300px]">
       <svg viewBox="0 0 200 112" className="block w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="goal-arc" x1="0" y1="1" x2="1" y2="0">
@@ -283,7 +283,7 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           strokeWidth={20}
           strokeLinecap="round"
           strokeDasharray={dash(len)}
-          opacity={0.55}
+          opacity={0.41}
           filter="url(#goal-bloom)"
         />
         {/* progress arc */}
@@ -304,12 +304,12 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 text-cyan-200"
           style={{
             background: "linear-gradient(180deg, #16213A, #0F1522)",
-            boxShadow: "0 0 22px rgba(34,211,238,0.30), inset 0 1px 0 rgba(255,255,255,0.10)",
+            boxShadow: "0 0 22px rgba(34,211,238,0.22), inset 0 1px 0 rgba(255,255,255,0.10)",
           }}
         >
           <InlineIcon size={17}>{ICON.trophy}</InlineIcon>
         </span>
-        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]">
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.41)]">
           On track
         </div>
         <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-[#94A0B8]" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -353,6 +353,9 @@ export default async function ConsultantsPreviewPage() {
   const goalPct = Math.round((KPIS.consultsThisWeek / KPIS.consultTargetThisWeek) * 100);
   const remaining = KPIS.consultTargetThisWeek - KPIS.consultsThisWeek;
   const paceBehind = 3; // demo — Phase 7 computes pace from week elapsed
+  const topConsultants = [...CONSULTANTS]
+    .sort((a, b) => b.consultsThisWeek - a.consultsThisWeek || b.showRate - a.showRate)
+    .slice(0, 3);
 
   const heroKpis = [
     { label: "Speed to consult", value: KPIS.speedToConsult, sub: "median, assignment → consult held", subColor: null, color: "#818CF8", icon: ICON.gauge, spark: [8, 7.4, 7.8, 6.6, 7.1, 6.2, 6.5, 5.6] },
@@ -376,7 +379,7 @@ export default async function ConsultantsPreviewPage() {
       {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.45)]">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.34)]">
             Consultant Command
           </div>
           <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight text-white">
@@ -393,7 +396,7 @@ export default async function ConsultantsPreviewPage() {
               key={s}
               className={`px-3.5 py-1.5 text-xs ${
                 i === 3
-                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.35)]"
+                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.26)]"
                   : "border-l border-white/[0.06] text-[#8B95A7] first:border-l-0"
               }`}
             >
@@ -406,10 +409,10 @@ export default async function ConsultantsPreviewPage() {
       {/* weekly goal + needs attention */}
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
         <section className={`${CARD} border-indigo-400/15 p-6`} style={{ background: "linear-gradient(135deg, #151C38 0%, #131A2E 45%, #111726 100%)" }}>
-          <Glow className="-top-24 right-10 h-72 w-72 opacity-40" color="#6366F1" />
-          <Glow className="-bottom-20 right-1/4 h-52 w-52 opacity-25" color="#22D3EE" />
-          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-20" color="#7C3AED" />
-          <div className="relative grid grid-cols-1 items-center gap-6 md:grid-cols-[1fr_1.15fr]">
+          <Glow className="-top-24 right-1/3 h-72 w-72 opacity-30" color="#6366F1" />
+          <Glow className="-bottom-20 left-1/2 h-52 w-52 opacity-[0.18]" color="#22D3EE" />
+          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-15" color="#7C3AED" />
+          <div className="relative grid grid-cols-1 items-center gap-6 md:grid-cols-2 xl:grid-cols-[0.95fr_1.2fr_0.85fr]">
             <div>
               <div className="flex items-center gap-3">
                 <HeroIcon color="#818CF8" size={44}>{ICON.target}</HeroIcon>
@@ -421,17 +424,17 @@ export default async function ConsultantsPreviewPage() {
                 </div>
               </div>
               <div className="mt-5 flex items-baseline gap-2" style={{ fontVariantNumeric: num }}>
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.35)]">
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.26)]">
                   {KPIS.consultsThisWeek}
                 </span>
                 <span className="text-2xl font-semibold text-[#64748B]">/ {KPIS.consultTargetThisWeek}</span>
               </div>
-              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)]" style={{ fontVariantNumeric: num }}>
+              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.34)]" style={{ fontVariantNumeric: num }}>
                 {goalPct}% of target
               </div>
               <div className="mt-3 h-1.5 w-full max-w-[260px] rounded-full bg-[#0D1220] shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.55)]"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.41)]"
                   style={{ width: `${goalPct}%` }}
                 />
               </div>
@@ -444,13 +447,50 @@ export default async function ConsultantsPreviewPage() {
               <div className="ml-[22px] text-[11px] text-[#64748B]">to reach weekly target</div>
             </div>
             <GoalGauge value={KPIS.consultsThisWeek} target={KPIS.consultTargetThisWeek} paceBehind={paceBehind} />
+            <div className="md:col-span-2 xl:col-span-1 xl:border-l xl:border-white/[0.06] xl:pl-6">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C8799]">
+                Top consultants this week
+              </div>
+              <ul className="mt-3 space-y-3">
+                {topConsultants.map((cn, i) => (
+                  <li key={cn.name} className="flex items-center gap-3">
+                    <span className="relative shrink-0">
+                      <span
+                        className="block rounded-full p-[2px]"
+                        style={{
+                          background: i === 0 ? "linear-gradient(135deg, #6366F1, #22D3EE)" : "rgba(255,255,255,0.10)",
+                          boxShadow: i === 0 ? "0 0 14px rgba(34,211,238,0.26)" : "none",
+                        }}
+                      >
+                        <PersonAvatar src={cn.avatar} alt={cn.name} size={44} />
+                      </span>
+                      <span
+                        className="absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-[#131A2E] text-[10px] font-bold text-white"
+                        style={{
+                          background: i === 0 ? "linear-gradient(135deg, #6366F1, #22D3EE)" : "#2A3348",
+                          fontVariantNumeric: num,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-white">{cn.name}</span>
+                      <span className="block truncate text-[11px] text-[#8B95A7]" style={{ fontVariantNumeric: num }}>
+                        {cn.consultsThisWeek} consults · {cn.speedToConsult ?? "—"} to consult
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
 
         <section className={`${CARD} border-red-400/20 p-5`} style={{ background: "linear-gradient(160deg, #1E1420 0%, #171323 40%, #121826 100%)" }}>
-          <Glow className="-right-16 -top-16 h-56 w-56 opacity-30" color="#EF4444" />
+          <Glow className="-right-16 -top-16 h-56 w-56 opacity-[0.22]" color="#EF4444" />
           <div className="relative">
-            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]">
+            <div className="flex items-center gap-2 text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.38)]">
               <InlineIcon size={15}>{ICON.bell}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Needs attention</h2>
             </div>
@@ -465,14 +505,14 @@ export default async function ConsultantsPreviewPage() {
                   style={{ background: "linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))" }}
                 >
                   <HeroIcon color="#F87171" size={40}>{a.icon}</HeroIcon>
-                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.6)]" style={{ fontVariantNumeric: num }}>
+                  <span className="text-2xl font-bold text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.45)]" style={{ fontVariantNumeric: num }}>
                     {a.count}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-white">{a.title}</span>
                     <span className="block text-[11px] text-[#8B95A7]">{a.sub}</span>
                   </span>
-                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.25),inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  <span className="ml-auto shrink-0 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.19),inset_0_1px_0_rgba(255,255,255,0.06)]">
                     Review
                   </span>
                 </div>
@@ -487,7 +527,7 @@ export default async function ConsultantsPreviewPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {heroKpis.map((k, i) => (
           <div key={k.label} className={`${CARD} p-4`}>
-            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.12]" color={k.color} />
+            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.09]" color={k.color} />
             <div className="relative flex items-center gap-3">
               <HeroIcon color={k.color} size={40}>{k.icon}</HeroIcon>
               <div className="min-w-0 flex-1">
@@ -516,15 +556,15 @@ export default async function ConsultantsPreviewPage() {
 
       {/* Athena briefing */}
       <section className={`${CARD} mt-4 border-indigo-400/20 p-5`} style={{ background: "linear-gradient(90deg, #121A38 0%, #141B3C 55%, #171A40 100%)" }}>
-        <Glow className="-left-20 -top-24 h-64 w-64 opacity-30" color="#6366F1" />
-        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-20" color="#8B5CF6" />
+        <Glow className="-left-20 -top-24 h-64 w-64 opacity-[0.22]" color="#6366F1" />
+        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-15" color="#8B5CF6" />
         <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]">
+            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.45)]">
               <InlineIcon size={15}>{ICON.sparkles}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Athena briefing</h2>
             </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)]">
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.22)]">
               Demo
             </span>
           </div>
@@ -552,7 +592,7 @@ export default async function ConsultantsPreviewPage() {
       {/* assignment → consultation funnel */}
       <section className={`${CARD} mt-4 p-5`}>
         <div className="flex items-baseline justify-between gap-3">
-          <div className="flex items-center gap-2 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]">
+          <div className="flex items-center gap-2 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.38)]">
             <InlineIcon size={14}>{ICON.funnel}</InlineIcon>
             <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">
               Assignment → Consultation Funnel
@@ -572,7 +612,7 @@ export default async function ConsultantsPreviewPage() {
                   ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 16px 50%)"
                   : "polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%)";
               return (
-                <div key={step.label} className="flex-1" style={{ filter: `drop-shadow(0 0 10px ${s.color}40)` }}>
+                <div key={step.label} className="flex-1" style={{ filter: `drop-shadow(0 0 10px ${s.color}30)` }}>
                   {/* outer = glowing 1px border, inner = fill */}
                   <div style={{ clipPath: clip, padding: 1, background: `linear-gradient(90deg, ${s.color}66, ${s.color}b3)` }}>
                     <div
@@ -589,7 +629,7 @@ export default async function ConsultantsPreviewPage() {
                             borderColor: `${s.color}99`,
                             color: s.color,
                             background: `${s.color}26`,
-                            boxShadow: `0 0 10px ${s.color}66`,
+                            boxShadow: `0 0 10px ${s.color}4d`,
                             fontVariantNumeric: num,
                           }}
                         >
@@ -597,7 +637,7 @@ export default async function ConsultantsPreviewPage() {
                         </span>
                         <span
                           className="text-[28px] font-bold leading-none text-white"
-                          style={{ fontVariantNumeric: num, textShadow: `0 0 18px ${s.color}80` }}
+                          style={{ fontVariantNumeric: num, textShadow: `0 0 18px ${s.color}60` }}
                         >
                           {step.count}
                         </span>
