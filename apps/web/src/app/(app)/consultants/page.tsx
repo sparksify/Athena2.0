@@ -113,7 +113,7 @@ function Spark({ id, points, color }: { id: string; points: number[]; color: str
         </filter>
       </defs>
       <path d={`${path} L${lastX},${h} L0,${h} Z`} fill={`url(#${id}-fill)`} />
-      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.28} filter={`url(#${id}-glow)`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={3.5} opacity={0.10} filter={`url(#${id}-glow)`} />
       <path d={path} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={lastX} cy={lastY} r={3.2} fill={color} opacity={0.35} />
       <circle cx={lastX} cy={lastY} r={1.8} fill="#fff" />
@@ -131,8 +131,7 @@ function HeroIcon({ color, size = 36, glow = true, children }: { color: string; 
         color,
         borderColor: `${color}66`,
         background: `linear-gradient(145deg, ${color}30, ${color}0d)`,
-        boxShadow: glow ? `0 0 18px ${color}1c, inset 0 1px 0 rgba(255,255,255,0.10)` : "inset 0 1px 0 rgba(255,255,255,0.10)",
-        filter: glow ? `drop-shadow(0 0 4px ${color}3a)` : undefined,
+        boxShadow: glow ? `0 0 14px ${color}0f, inset 0 1px 0 rgba(255,255,255,0.10)` : "inset 0 1px 0 rgba(255,255,255,0.10)",
       }}
     >
       <svg
@@ -283,7 +282,7 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           strokeWidth={20}
           strokeLinecap="round"
           strokeDasharray={dash(len)}
-          opacity={0.31}
+          opacity={0.12}
           filter="url(#goal-bloom)"
         />
         {/* progress arc */}
@@ -304,12 +303,12 @@ function GoalGauge({ value, target, paceBehind }: { value: number; target: numbe
           className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 text-cyan-200"
           style={{
             background: "linear-gradient(180deg, #16213A, #0F1522)",
-            boxShadow: "0 0 22px rgba(34,211,238,0.17), inset 0 1px 0 rgba(255,255,255,0.10)",
+            boxShadow: "0 0 16px rgba(34,211,238,0.08), inset 0 1px 0 rgba(255,255,255,0.10)",
           }}
         >
           <InlineIcon size={17}>{ICON.trophy}</InlineIcon>
         </span>
-        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.31)]">
+        <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300">
           On track
         </div>
         <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-[#94A0B8]" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -382,7 +381,7 @@ export default async function ConsultantsPreviewPage() {
       {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.26)]">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400">
             Consultant Command
           </div>
           <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight text-white">
@@ -399,7 +398,7 @@ export default async function ConsultantsPreviewPage() {
               key={s}
               className={`px-3.5 py-1.5 text-xs ${
                 i === 3
-                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45),0_0_16px_rgba(99,102,241,0.19)]"
+                  ? "bg-indigo-500/25 font-medium text-indigo-100 shadow-[inset_0_0_0_1px_rgba(129,140,248,0.45)]"
                   : "border-l border-white/[0.06] text-[#8B95A7] first:border-l-0"
               }`}
             >
@@ -412,9 +411,9 @@ export default async function ConsultantsPreviewPage() {
       {/* weekly goal + needs attention */}
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
         <section className={`${CARD} border-indigo-400/15 p-6`} style={{ background: "linear-gradient(135deg, #151C38 0%, #131A2E 45%, #111726 100%)" }}>
-          <Glow className="-top-24 right-1/3 h-72 w-72 opacity-[0.22]" color="#6366F1" />
-          <Glow className="-bottom-20 left-1/2 h-52 w-52 opacity-[0.14]" color="#22D3EE" />
-          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-[0.11]" color="#7C3AED" />
+          <Glow className="-top-24 right-1/3 h-72 w-72 opacity-[0.06]" color="#6366F1" />
+          <Glow className="-bottom-20 left-1/2 h-52 w-52 opacity-[0.06]" color="#22D3EE" />
+          <Glow className="-left-16 top-1/3 h-48 w-48 opacity-[0.06]" color="#7C3AED" />
           <div className="relative grid grid-cols-1 items-center gap-6 md:grid-cols-2 xl:grid-cols-[0.95fr_1.2fr_0.85fr]">
             <div>
               <div className="flex items-center gap-3">
@@ -427,17 +426,17 @@ export default async function ConsultantsPreviewPage() {
                 </div>
               </div>
               <div className="mt-5 flex items-baseline gap-2" style={{ fontVariantNumeric: num }}>
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_28px_rgba(129,140,248,0.19)]">
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white">
                   {KPIS.consultsThisWeek}
                 </span>
                 <span className="text-2xl font-semibold text-[#64748B]">/ {KPIS.consultTargetThisWeek}</span>
               </div>
-              <div className="mt-2 text-sm font-semibold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.26)]" style={{ fontVariantNumeric: num }}>
+              <div className="mt-2 text-sm font-semibold text-cyan-300" style={{ fontVariantNumeric: num }}>
                 {goalPct}% of target
               </div>
               <div className="mt-3 h-1.5 w-full max-w-[260px] rounded-full bg-[#0D1220] shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.31)]"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.12)]"
                   style={{ width: `${goalPct}%` }}
                 />
               </div>
@@ -462,7 +461,7 @@ export default async function ConsultantsPreviewPage() {
                         className="block rounded-full p-[2px]"
                         style={{
                           background: i === 0 ? "linear-gradient(135deg, #6366F1, #22D3EE)" : "rgba(255,255,255,0.10)",
-                          boxShadow: i === 0 ? "0 0 14px rgba(34,211,238,0.19)" : "none",
+                          boxShadow: i === 0 ? "0 0 12px rgba(34,211,238,0.08)" : "none",
                         }}
                       >
                         <PersonAvatar src={cn.avatar} alt={cn.name} size={44} />
@@ -529,7 +528,7 @@ export default async function ConsultantsPreviewPage() {
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {heroKpis.map((k, i) => (
           <div key={k.label} className={`${CARD} p-4`}>
-            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.07]" color={k.color} />
+            <Glow className="-right-10 -top-10 h-32 w-32 opacity-[0.06]" color={k.color} />
             <div className="relative flex items-center gap-3">
               <HeroIcon color={k.color} size={40}>{k.icon}</HeroIcon>
               <div className="min-w-0 flex-1">
@@ -558,15 +557,15 @@ export default async function ConsultantsPreviewPage() {
 
       {/* Athena briefing */}
       <section className={`${CARD} mt-4 border-indigo-400/20 p-5`} style={{ background: "linear-gradient(90deg, #121A38 0%, #141B3C 55%, #171A40 100%)" }}>
-        <Glow className="-left-20 -top-24 h-64 w-64 opacity-[0.17]" color="#6366F1" />
-        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-[0.11]" color="#8B5CF6" />
+        <Glow className="-left-20 -top-24 h-64 w-64 opacity-[0.06]" color="#6366F1" />
+        <Glow className="-bottom-24 right-1/3 h-48 w-48 opacity-[0.06]" color="#8B5CF6" />
         <div className="relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.34)]">
+            <div className="flex items-center gap-2 text-indigo-300">
               <InlineIcon size={15}>{ICON.sparkles}</InlineIcon>
               <h2 className="text-[11px] font-bold uppercase tracking-[0.2em]">Athena briefing</h2>
             </div>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.17)]">
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
               Demo
             </span>
           </div>
