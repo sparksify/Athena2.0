@@ -241,3 +241,12 @@ export const KPIS = {
   slaBreaches48h: 2,
   takeBacks30d: 5,
 };
+
+// Athena 1.0 command-center headline figures (docs/design/consultant-
+// accountability.md). Static until Phase 7/9 wire the live queries.
+export const OVERVIEW_KPIS = {
+  openOpportunities: 162,
+  pipelineValue: 749_000,
+  positiveReplies: 343,
+  consultantHandoffs: 427,
+};

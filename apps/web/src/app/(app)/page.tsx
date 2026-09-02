@@ -1,71 +1,14 @@
+import type { ReactNode } from "react";
+
 import { supabaseServer } from "@/lib/supabase/server";
+import { PersonAvatar } from "@/components/agent-avatar";
+import { CONSULTANTS, KPIS, OVERVIEW_KPIS, UPCOMING_CONSULTS } from "./consultants/demo-data";
 
 export const dynamic = "force-dynamic";
 
 const DAY = 86_400_000;
 
 /* ---------- tiny server-rendered charts (no client JS) ---------- */
-
-function Spark({ points, color }: { points: number[]; color: string }) {
-  const w = 100;
-  const h = 26;
-  const max = Math.max(1, ...points);
-  const step = points.length > 1 ? w / (points.length - 1) : w;
-  const y = (v: number) => h - 3 - (v / max) * (h - 8);
-  const path = points.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  const lastX = ((points.length - 1) * step).toFixed(1);
-  return (
-    <svg width={w} height={h} className="mt-2 block" aria-hidden>
-      <path d={`${path} L${lastX},${h} L0,${h} Z`} fill={color} opacity={0.12} />
-      <path d={path} fill="none" stroke={color} strokeWidth={1.5} />
-      <circle cx={lastX} cy={y(points[points.length - 1] ?? 0)} r={2.2} fill={color} />
-    </svg>
-  );
-}
-
-function TileIcon({ d, color }: { d: string; color: string }) {
-  return (
-    <span
-      className="flex h-7 w-7 items-center justify-center rounded-lg"
-      style={{ backgroundColor: `${color}1f` }}
-    >
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d={d} />
-      </svg>
-    </span>
-  );
-}
-
-function Kpi({
-  label, value, spark, color, icon, sub, subTone = "muted", dim,
-}: {
-  label: string;
-  value: number | string;
-  spark: number[];
-  color: string;
-  icon: string;
-  sub?: string;
-  subTone?: "up" | "muted";
-  dim?: boolean;
-}) {
-  return (
-    <div className={`rounded-xl border border-[#1E2635] bg-[#121826] p-4 ${dim ? "opacity-55" : ""}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">{label}</div>
-          <div className="mt-1 text-2xl font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {value}
-          </div>
-        </div>
-        <TileIcon d={icon} color={color} />
-      </div>
-      <div className={`mt-0.5 h-4 text-[11px] ${subTone === "up" ? "text-emerald-400" : "text-[#8B95A7]"}`}>
-        {sub ?? ""}
-      </div>
-      <Spark points={spark} color={color} />
-    </div>
-  );
-}
 
 const FUNNEL_COLORS = ["#6366F1", "#818CF8", "#38BDF8", "#22D3EE", "#2DD4BF", "#34D399", "#A3E635", "#F59E0B"];
 
@@ -162,17 +105,6 @@ function Donut({
 
 /* ---------- data helpers ---------- */
 
-function dailySeries(dates: Date[], days = 7): number[] {
-  const out = new Array<number>(days).fill(0);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  for (const d of dates) {
-    const idx = days - 1 - Math.floor((start.getTime() - new Date(d).setHours(0, 0, 0, 0)) / DAY);
-    if (idx >= 0 && idx < days) out[idx]! += 1;
-  }
-  return out;
-}
-
 const money = (n: number) => (n === 0 ? "$0.00" : n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`);
 
 const scorePill = (s: number | null) =>
@@ -200,6 +132,141 @@ const AVATAR_GRADIENTS = [
 const FUNNEL_STAGES = [
   "Contacted", "Replied", "Positive", "Qualified", "Intro sent", "Appointment", "Showed", "Closed",
 ] as const;
+
+/* ---------- overview hero (mockup 2026-09-02) ---------- */
+
+const OV_CARD = "rounded-2xl border border-white/[0.07] bg-[#111726]";
+
+function OvIcon({ size = 16, stroke = 1.8, children }: { size?: number; stroke?: number; children: ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
+
+const OV = {
+  dollar: (
+    <>
+      <path d="M12 2v20" />
+      <path d="M17 6.5H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6" />
+    </>
+  ),
+  users: (
+    <>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+  group: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M15.5 15.5a5 5 0 0 1 6 4.5" />
+    </>
+  ),
+  gauge: (
+    <>
+      <path d="m12 14 4-4" />
+      <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M9 13h6M9 17h6" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </>
+  ),
+  check: <path d="m5 12 5 5L20 7" />,
+  alert: (
+    <>
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      <path d="M12 9v4M12 17h.01" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-10 7L2 7" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </>
+  ),
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  chevronRight: <path d="m9 6 6 6-6 6" />,
+} as const;
+
+function OvTile({ color, size = 56, children }: { color: string; size?: number; children: ReactNode }) {
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-xl border"
+      style={{ width: size, height: size, color, borderColor: `${color}59`, backgroundColor: `${color}14` }}
+    >
+      <OvIcon size={Math.round(size * 0.42)}>{children}</OvIcon>
+    </span>
+  );
+}
+
+const MEDAL = [
+  { ring: "#F59E0B", fill: "linear-gradient(180deg, #FCD34D, #D97706)", text: "#78350F" },
+  { ring: "#9CA3AF", fill: "linear-gradient(180deg, #E5E7EB, #6B7280)", text: "#1F2937" },
+  { ring: "#F97316", fill: "linear-gradient(180deg, #FDBA74, #C2410C)", text: "#431407" },
+] as const;
+
+function Medal({ rank }: { rank: number }) {
+  const m = MEDAL[rank - 1] ?? MEDAL[2];
+  return (
+    <span className="relative flex h-9 w-9 shrink-0 items-start justify-center">
+      <span
+        className="absolute bottom-0 left-1/2 h-4 w-2 -translate-x-[6px] rotate-[18deg] rounded-sm"
+        style={{ backgroundColor: m.ring, opacity: 0.85 }}
+      />
+      <span
+        className="absolute bottom-0 left-1/2 h-4 w-2 -translate-x-[2px] -rotate-[18deg] rounded-sm"
+        style={{ backgroundColor: m.ring, opacity: 0.85 }}
+      />
+      <span
+        className="relative flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold"
+        style={{ background: m.fill, color: m.text, boxShadow: `0 0 0 2px #111726, 0 0 0 3px ${m.ring}66`, fontVariantNumeric: "tabular-nums" }}
+      >
+        {rank}
+      </span>
+    </span>
+  );
+}
+
+const JOURNEY = [
+  { label: "Assigned", value: null, color: "#818CF8", icon: OV.doc },
+  { label: "First touch", value: KPIS.medianFirstTouch, color: "#2DD4BF", icon: OV.chat },
+  { label: "Appointment", value: "—", color: "#F59E0B", icon: OV.calendar },
+  { label: "Consult held", value: KPIS.speedToConsult, color: "#60A5FA", icon: OV.check },
+] as const;
+
+const SNAPSHOT_GRID = "grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.4fr_1fr] items-center";
 
 export default async function OverviewPage() {
   const supabase = await supabaseServer();
@@ -265,11 +332,15 @@ export default async function OverviewPage() {
       supabase.from("event").select("id, type, created_at").order("created_at", { ascending: false }).limit(8),
     ]);
 
-  const byType = (t: string) =>
-    dailySeries((weekEvents ?? []).filter((e) => e.type === t).map((e) => new Date(e.created_at)));
-  const flat = new Array(7).fill(0);
   const scored7 = (weekEvents ?? []).filter((e) => e.type === "candidate.scored").length;
-  const imported7 = (weekEvents ?? []).filter((e) => e.type === "candidate.imported").length;
+
+  // Consultant figures share the Consultants page fixtures until Phase 7 wires live queries.
+  const topConsultants = [...CONSULTANTS]
+    .sort((a, b) => b.consultsThisWeek - a.consultsThisWeek || b.showRate - a.showRate)
+    .slice(0, 3);
+  const breachConsultant = CONSULTANTS.find((c) => c.sla === "take_back") ?? CONSULTANTS[CONSULTANTS.length - 1]!;
+  const snapshot = [...topConsultants, breachConsultant];
+  const missingCq = UPCOMING_CONSULTS.filter((c) => c.cq === "missing").length;
 
   const funnelValues = [contacted, replies, positive, qualified, intros, appointments, showed, 0];
   const funnelBase = Math.max(1, contacted);
@@ -304,43 +375,214 @@ export default async function OverviewPage() {
 
   return (
     <main className="mx-auto max-w-[1400px] p-8">
+      {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-400">Athena overview</div>
+          <h1 className="mt-1 text-[34px] font-semibold leading-tight tracking-tight text-white">
             {greeting}, {firstName}.
           </h1>
-          <p className="mt-1 text-sm text-[#8B95A7]">Here&apos;s what&apos;s happening with Athena today.</p>
+          <p className="mt-1.5 text-sm text-[#8B95A7]">
+            Pipeline velocity, consultant performance, and the actions that need attention.
+          </p>
         </div>
-        <span className="rounded-lg border border-[#1E2635] bg-[#121826] px-3 py-1.5 text-xs text-[#8B95A7]">
+        <span className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#121826] px-3.5 py-2 text-sm text-[#C3CCDB]">
+          <span className="text-[#8B95A7]"><OvIcon size={15}>{OV.calendar}</OvIcon></span>
           Last 7 days · {rangeChip}
+          <span className="text-[#8B95A7]"><OvIcon size={14}>{OV.chevronDown}</OvIcon></span>
         </span>
       </div>
 
-      {/* KPI tiles */}
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-        <Kpi label="Evaluated" value={evaluated} spark={byType("candidate.scored")} color="#818CF8"
-          icon="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a7 7 0 0114 0v1M17 8a3 3 0 100-6M22 21v-1a6 6 0 00-4-5.7"
-          sub={scored7 > 0 ? `▲ ${scored7} scored this week` : undefined} subTone="up" />
-        <Kpi label="Imported" value={candidatesAll} spark={byType("candidate.imported")} color="#22D3EE"
-          icon="M12 3v12m0-12L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"
-          sub={imported7 > 0 ? `▲ ${imported7} new this week` : undefined} subTone="up" />
-        <Kpi label="Contacted" value={contacted} spark={flat} color="#38BDF8"
-          icon="M4 6h16v12H4zM4 7l8 6 8-6" dim={contacted === 0} />
-        <Kpi label="Positive" value={positive} spark={flat} color="#34D399"
-          icon="M14 9V5a2 2 0 00-4 0v4H6l1 10h9a2 2 0 002-2v-6a2 2 0 00-2-2h-2z" sub="Phase 6" dim={positive === 0} />
-        <Kpi label="Qualified" value={qualified} spark={flat} color="#A78BFA"
-          icon="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9L9.5 8z" dim={qualified === 0} />
-        <Kpi label="Consultant intros" value={intros} spark={flat} color="#F59E0B"
-          icon="M8 12a3 3 0 100-6 3 3 0 000 6zm8 0a3 3 0 100-6 3 3 0 000 6zM2 20v-1a5 5 0 015-5m5 6v-1a5 5 0 0110 0v1" sub="Phase 7" dim={intros === 0} />
-        <Kpi label="Appointments" value={appointments} spark={flat} color="#60A5FA"
-          icon="M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 011 1v13a2 2 0 01-2 2H6a2 2 0 01-2-2V6a1 1 0 011-1z"
-          sub={showed > 0 ? `${showed} showed` : undefined} dim={appointments === 0} />
-        <Kpi label="Projected pipeline" value="—" spark={flat} color="#A78BFA"
-          icon="M4 20V10m6 10V4m6 16v-7m4 7H2" sub="Phase 9" dim />
+      {/* KPI cards */}
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: "Open pipeline value", value: `$${OVERVIEW_KPIS.pipelineValue.toLocaleString()}`, sub: `Across ${OVERVIEW_KPIS.openOpportunities} open CRM opportunities`, subColor: "#8B95A7", color: "#818CF8", icon: OV.dollar },
+          { label: "New candidates", value: String(candidatesAll), sub: `+${scored7} evaluated this week`, subColor: "#2DD4BF", color: "#2DD4BF", icon: OV.users },
+          { label: "Buyer-positive replies", value: String(OVERVIEW_KPIS.positiveReplies), sub: "Inception positive reply volume", subColor: "#8B95A7", color: "#34D399", icon: OV.chat },
+          { label: "Consultant handoffs", value: String(OVERVIEW_KPIS.consultantHandoffs), sub: "Introductions in selected range", subColor: "#8B95A7", color: "#F59E0B", icon: OV.group },
+        ].map((k) => (
+          <div key={k.label} className={`${OV_CARD} flex items-center gap-4 p-5`}>
+            <OvTile color={k.color}>{k.icon}</OvTile>
+            <div className="min-w-0">
+              <div className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#94A0B8]">{k.label}</div>
+              <div className="mt-0.5 text-[40px] font-semibold leading-none tracking-tight text-white" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {k.value}
+              </div>
+              <div className="mt-2 truncate text-[13px]" style={{ color: k.subColor }}>{k.sub}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
+      {/* velocity + top consultants + needs intervention */}
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr_0.95fr_1fr]">
+        <section className={`${OV_CARD} p-5`}>
+          <div className="flex items-center gap-3">
+            <OvTile color="#60A5FA" size={34}>{OV.gauge}</OvTile>
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#C3CCDB]">Pipeline velocity</h2>
+          </div>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-white/[0.08] text-center">
+            <div className="px-2">
+              <div className="text-[13px] text-[#C3CCDB]">Median first touch</div>
+              <div className="mt-2 text-[40px] font-semibold leading-none text-sky-300" style={{ fontVariantNumeric: "tabular-nums" }}>{KPIS.medianFirstTouch}</div>
+            </div>
+            <div className="px-2">
+              <div className="text-[13px] leading-snug text-[#C3CCDB]">Median assignment →<br />consult held</div>
+              <div className="mt-2 text-[40px] font-semibold leading-none text-sky-300" style={{ fontVariantNumeric: "tabular-nums" }}>{KPIS.speedToConsult}</div>
+            </div>
+            <div className="px-2">
+              <div className="text-[13px] text-[#C3CCDB]">Time to first appointment</div>
+              <div className="mt-2 text-[40px] font-semibold leading-none text-[#64748B]">—</div>
+              <span className="mt-2 inline-block rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                Tracking required
+              </span>
+            </div>
+          </div>
+          <div className="mt-6 flex items-start">
+            {JOURNEY.map((j, i) => (
+              <div key={j.label} className="flex flex-1 items-start">
+                <div className="flex w-full flex-col items-center text-center">
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-full border-2"
+                    style={{ borderColor: j.color, color: j.color, backgroundColor: `${j.color}12` }}
+                  >
+                    <OvIcon size={18}>{j.icon}</OvIcon>
+                  </span>
+                  <span className="mt-2.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.14em] text-[#E7ECF3]">{j.label}</span>
+                  {j.value !== null && (
+                    <span className="mt-1 text-[15px] font-medium text-[#E7ECF3]" style={{ fontVariantNumeric: "tabular-nums" }}>{j.value}</span>
+                  )}
+                </div>
+                {i < JOURNEY.length - 1 && (
+                  <span className="mt-[21px] flex w-16 shrink-0 -translate-x-2 items-center text-[#3D4A5C]" aria-hidden>
+                    <span className="h-px flex-1 bg-[#3D4A5C]" />
+                    <OvIcon size={12}>{OV.chevronRight}</OvIcon>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 flex items-center gap-2.5 rounded-lg border border-sky-500/20 bg-sky-500/[0.06] px-3 py-2.5 text-[12px] text-[#C3CCDB]">
+            <span className="text-sky-400"><OvIcon size={16}>{OV.info}</OvIcon></span>
+            First-touch speed is visible. Appointment timestamp must be captured to measure the full journey.
+          </div>
+        </section>
+
+        <section className={`${OV_CARD} p-5`}>
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#C3CCDB]">Top consultants this week</h2>
+          <ul className="mt-4 space-y-4">
+            {topConsultants.map((cn, i) => (
+              <li key={cn.name} className="flex items-center gap-3">
+                <Medal rank={i + 1} />
+                <span className="shrink-0 rounded-full border-2 border-indigo-400/40 p-[2px]">
+                  <PersonAvatar src={cn.avatar} alt={cn.name} size={60} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[19px] font-semibold text-white">{cn.name}</span>
+                  <span className="block truncate text-[13px] text-[#8B95A7]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {cn.consultsThisWeek} consults · {cn.speedToConsult ?? "—"} to consult
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <a href="/consultants" className="mt-5 inline-flex items-center gap-1 text-[14px] text-indigo-300 hover:underline">
+            View all consultants <OvIcon size={14}>{OV.chevronRight}</OvIcon>
+          </a>
+        </section>
+
+        <section className="rounded-2xl border border-red-500/30 bg-[#1A1119] p-5">
+          <div className="flex items-center gap-2.5 text-red-400">
+            <OvIcon size={18}>{OV.alert}</OvIcon>
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em]">Needs intervention</h2>
+          </div>
+          <div className="mt-4 flex items-start gap-4">
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-red-500/60 bg-red-500/10 text-[22px] font-semibold text-red-200">
+              {breachConsultant.name.split(" ").map((p) => p[0]).join("")}
+            </span>
+            <div className="min-w-0">
+              <div className="text-[20px] font-semibold text-white">{breachConsultant.name}</div>
+              <div className="text-[15px] text-red-400" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {breachConsultant.consultsThisWeek} consults this week
+              </div>
+              <div className="mt-0.5 text-[15px] leading-snug text-[#C3CCDB]">
+                {KPIS.slaBreaches48h} assignments past the 48-hour no-touch SLA
+              </div>
+              <a
+                href="/consultants"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-500/85 px-4 py-2 text-[15px] font-medium text-white hover:bg-red-500"
+              >
+                Contact consultant <OvIcon size={16}>{OV.mail}</OvIcon>
+              </a>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3 border-t border-white/[0.08] pt-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-500/50 text-amber-400"><OvIcon size={15}>{OV.calendar}</OvIcon></span>
+              <span className="min-w-0 flex-1 text-[14px] leading-snug text-[#E7ECF3]">Time to first appointment is not being captured</span>
+              <span className="shrink-0 rounded-md border border-amber-500/60 px-3 py-1.5 text-[13px] font-medium text-amber-300">Fix tracking</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-500/50 text-red-400"><OvIcon size={15}>{OV.doc}</OvIcon></span>
+              <span className="min-w-0 flex-1 text-[14px] leading-snug text-[#E7ECF3]">{missingCq} upcoming consults missing CQ</span>
+              <a href="/consultants" className="shrink-0 rounded-md border border-red-500/60 px-3 py-1.5 text-[13px] font-medium text-red-300 hover:bg-red-500/10">Review CQs</a>
+            </div>
+          </div>
+          <p className="mt-4 text-[12px] text-[#8B95A7]">Resolve blockers before more opportunities stall.</p>
+        </section>
+      </div>
+
+      {/* consultant execution snapshot */}
+      <section className={`${OV_CARD} mt-4 p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <OvTile color="#818CF8" size={34}>{OV.group}</OvTile>
+            <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#C3CCDB]">Consultant execution snapshot</h2>
+          </div>
+          <div className="flex rounded-lg border border-white/[0.08] bg-[#0F1522] p-0.5 text-[13px]">
+            <span className="flex items-center gap-1.5 rounded-md border border-indigo-400/50 bg-indigo-500/15 px-3 py-1.5 text-indigo-200">
+              <OvIcon size={13}>{OV.users}</OvIcon> All consultants
+            </span>
+            <span className="px-3 py-1.5 text-[#8B95A7]">Needs attention</span>
+            <span className="px-3 py-1.5 text-[#8B95A7]">Top performers</span>
+          </div>
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          <div className="min-w-[860px] text-[14px]">
+            <div className={`${SNAPSHOT_GRID} border-b border-white/[0.08] px-4 pb-2.5 text-[11px] uppercase tracking-[0.14em] text-[#8B95A7]`}>
+              <span>Consultant</span><span>Assigned</span><span>First touch</span><span>Appointments</span><span>Consults</span><span>Median speed</span><span>SLA</span>
+            </div>
+            {snapshot.map((cn) => {
+              const breach = cn.sla === "take_back";
+              return (
+                <div
+                  key={cn.name}
+                  className={`${SNAPSHOT_GRID} border-b border-white/[0.06] px-4 py-3 last:border-0 ${breach ? "bg-red-500/[0.08]" : ""}`}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  <span className="text-[#E7ECF3]">{cn.name}</span>
+                  <span className="text-[#C3CCDB]">{breach ? KPIS.slaBreaches48h : "—"}</span>
+                  <span className="text-[#C3CCDB]">—</span>
+                  <span className="text-[#C3CCDB]">—</span>
+                  <span className="text-[#E7ECF3]">{cn.consultsThisWeek}</span>
+                  <span className="text-[#C3CCDB]">{cn.speedToConsult ? `${cn.speedToConsult} to consult` : "—"}</span>
+                  <span>
+                    <span className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] ${breach ? "border border-red-500/50 bg-red-500/15 text-red-300" : "border border-emerald-500/40 bg-emerald-500/10 text-emerald-300"}`}>
+                      {breach ? "Breach" : "On track"}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <p className="mt-3 px-4 text-[13px] text-[#8B95A7]">
+          Showing primary consultants. <a href="/consultants" className="text-indigo-300 hover:underline">View full roster in CRM.</a>
+        </p>
+      </section>
+
       {/* Funnel + score mix */}
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
         <section className="rounded-xl border border-[#1E2635] bg-[#121826] p-5">
           <div className="flex items-baseline justify-between">
             <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
