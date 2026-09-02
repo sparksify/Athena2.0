@@ -11,7 +11,8 @@
     "test": "turbo test",
     "db:generate": "pnpm --filter @athena/db generate",
     "db:migrate": "pnpm --filter @athena/db migrate",
-    "import": "tsx scripts/imports/run.ts"
+    "import": "tsx scripts/imports/run.ts",
+    "import:athena1": "tsx scripts/imports/athena1-retirement.ts"
   },
   "packageManager": "pnpm@10.33.0",
   "engines": {

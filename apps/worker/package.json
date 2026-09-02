@@ -12,6 +12,7 @@
     "@athena/contracts": "workspace:*",
     "@athena/core": "workspace:*",
     "@athena/db": "workspace:*",
+    "@athena/email-smartlead": "workspace:*",
     "@athena/identity-splink": "workspace:*",
     "@athena/llm-anthropic": "workspace:*",
     "@athena/verify-millionverifier": "workspace:*",

@@ -40,7 +40,7 @@ const NAV: {
   { label: "Conversations", icon: "M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" }, // Phase 6
   { label: "Opportunities", icon: "M12 21a9 9 0 110-18 9 9 0 010 18zm0-5a4 4 0 110-8" }, // Phase 7
   { label: "Appointments", icon: "M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 011 1v13a2 2 0 01-2 2H6a2 2 0 01-2-2V6a1 1 0 011-1z" }, // Phase 7
-  { label: "Campaigns", icon: "M3 11l16-6v14L3 13v-2zm4 3v4a2 2 0 004 0v-3" }, // Phase 5
+  { label: "Outreach", href: "/outreach", icon: "M3 11l16-6v14L3 13v-2zm4 3v4a2 2 0 004 0v-3" }, // Phase 5
   {
     label: "Intelligence",
     icon: "M9 3h6M12 3v3m-5 0h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2zm2 4v4m6-4v4M12 18v3",

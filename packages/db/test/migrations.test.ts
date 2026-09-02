@@ -36,6 +36,9 @@ describe("migrations", () => {
     );
     expect(rows.map((r) => r.tablename)).toEqual([
       "agent_job",
+      "angle",
+      "campaign",
+      "campaign_membership",
       "candidate",
       "candidate_attribute",
       "candidate_source_link",
@@ -47,7 +50,10 @@ describe("migrations", () => {
       "identity_review",
       "import_batch",
       "interaction",
+      "mailbox",
+      "message",
       "org",
+      "outreach_draft",
       "prompt_version",
       "questionnaire",
       "score_snapshot",

@@ -199,7 +199,7 @@ export const interaction = pgTable(
     orgId: uuid("org_id").notNull().references(() => org.id),
     candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
     type: text("type", {
-      enum: ["email_sent", "email_reply", "sms", "call", "meeting", "presentation", "territory_check", "import_history"],
+      enum: ["email_sent", "email_reply", "email_bounce", "email_complaint", "opt_out", "sms", "call", "meeting", "presentation", "territory_check", "import_history"],
     }).notNull(),
     direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
@@ -328,4 +328,119 @@ export const promptVersion = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("prompt_version_org_name_version_idx").on(t.orgId, t.name, t.version)],
+);
+
+// ---------------------------------------------------------------- Phase 5: outbound
+
+export const mailbox = pgTable(
+  "mailbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    provider: text("provider", { enum: ["smartlead", "gmail"] }).notNull(),
+    address: text("address").notNull(),
+    domain: text("domain").notNull(),
+    dailyCap: integer("daily_cap").notNull().default(30),
+    status: text("status", { enum: ["warming", "active", "paused"] }).notNull().default("warming"),
+    externalRef: text("external_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("mailbox_org_address_idx").on(t.orgId, t.address)],
+);
+
+export const angle = pgTable(
+  "angle",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    promptVersionId: uuid("prompt_version_id").references(() => promptVersion.id),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("angle_org_name_idx").on(t.orgId, t.name)],
+);
+
+export const campaign = pgTable(
+  "campaign",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    name: text("name").notNull(),
+    status: text("status", { enum: ["draft", "active", "paused", "done"] }).notNull().default("draft"),
+    cohortDefinition: jsonb("cohort_definition").notNull().default({}),
+    sendWindow: jsonb("send_window")
+      .notNull()
+      .default({ days: [1, 2, 3, 4, 5], startHour: 8, endHour: 17, timezone: "America/Chicago" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("campaign_org_idx2").on(t.orgId)],
+);
+
+export const campaignMembership = pgTable(
+  "campaign_membership",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    campaignId: uuid("campaign_id").notNull().references(() => campaign.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    status: text("status", { enum: ["pending", "drafted", "sent", "replied", "excluded"] })
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("campaign_membership_campaign_candidate_idx").on(t.campaignId, t.candidateId)],
+);
+
+// Written by the send path; UNIQUE(provider, provider_message_id) is the
+// webhook idempotency anchor. conversation_id arrives with Phase 6.
+export const message = pgTable(
+  "message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").references(() => candidate.id),
+    direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
+    provider: text("provider").notNull(),
+    providerMessageId: text("provider_message_id").notNull(),
+    mailboxId: uuid("mailbox_id").references(() => mailbox.id),
+    subject: text("subject"),
+    bodyText: text("body_text"),
+    agentJobId: uuid("agent_job_id").references(() => agentJob.id),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("message_provider_message_idx").on(t.provider, t.providerMessageId),
+    index("message_org_candidate_idx2").on(t.orgId, t.candidateId),
+  ],
+);
+
+export const outreachDraft = pgTable(
+  "outreach_draft",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    campaignId: uuid("campaign_id").notNull().references(() => campaign.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    angleId: uuid("angle_id").notNull().references(() => angle.id),
+    mailboxId: uuid("mailbox_id").references(() => mailbox.id),
+    subject: text("subject").notNull(),
+    bodyText: text("body_text").notNull(),
+    citedAttributeIds: uuid("cited_attribute_ids").array().notNull().default([]),
+    status: text("status", {
+      enum: ["draft", "approved", "rejected", "scheduled", "sent", "blocked"],
+    })
+      .notNull()
+      .default("draft"),
+    blockedReason: text("blocked_reason"),
+    approvedBy: uuid("approved_by").references(() => appUser.id),
+    agentJobId: uuid("agent_job_id").references(() => agentJob.id),
+    sentMessageId: uuid("sent_message_id").references(() => message.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("outreach_draft_org_status_idx2").on(t.orgId, t.status),
+    index("outreach_draft_campaign_idx2").on(t.campaignId),
+  ],
 );
