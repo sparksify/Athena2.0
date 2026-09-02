@@ -14,6 +14,7 @@
     "@athena/core": "workspace:*",
     "@athena/db": "workspace:*",
     "@athena/email-smartlead": "workspace:*",
+    "@athena/llm-anthropic": "workspace:*",
     "@sentry/nextjs": "^10.72.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",

@@ -43,7 +43,12 @@ export default async function OutreachPage() {
 
   return (
     <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Outreach</h1>
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-2xl font-semibold">Outreach</h1>
+        <a href="/outreach/campaigns" className="text-sm text-indigo-400 underline-offset-4 hover:underline">
+          Campaigns &amp; mailboxes →
+        </a>
+      </div>
       <p className="mt-1 text-sm text-[#8B95A7]">
         Every email is AI-drafted from provenance-backed facts and sent only after a human approves
         it. Suppression and verification gates run in code on every send.

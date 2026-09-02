@@ -6,7 +6,7 @@ import { emit, type EmitTx } from "../events/emit";
 import type { LlmGateway } from "../llm/gateway";
 import { isSuppressed } from "./suppress";
 
-export const DRAFT_MODEL = process.env.OUTREACH_DRAFT_MODEL ?? "claude-sonnet-4-5";
+export const DRAFT_MODEL = process.env.OUTREACH_DRAFT_MODEL ?? "claude-sonnet-5";
 
 const DRAFT_SCHEMA = {
   type: "object",
