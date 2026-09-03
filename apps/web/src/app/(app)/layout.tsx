@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { AthenaLogo } from "@/components/athena-logo";
+import { AskAthena } from "@/components/ask-athena";
 import { SignOutButton } from "./sign-out-button";
 
 function NavIcon({ d }: { d: string }) {
@@ -141,6 +142,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
       <div className="min-w-0 flex-1">{children}</div>
+      <AskAthena />
     </div>
   );
 }
