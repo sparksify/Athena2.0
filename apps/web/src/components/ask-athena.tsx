@@ -57,6 +57,8 @@ export function AskAthena() {
   const [ttsSupported, setTtsSupported] = useState(true);
 
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const neuralRef = useRef<"unknown" | "yes" | "no">("unknown"); // /api/athena/speak availability, probed once
   const busyRef = useRef(false);
   const mutedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -69,21 +71,31 @@ export function AskAthena() {
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [turns, status]);
 
   const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   };
 
-  const speak = useCallback((text: string) => {
-    if (mutedRef.current || typeof window === "undefined" || !("speechSynthesis" in window)) {
+  const speakBrowser = useCallback((text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       setStatus("ready");
       return;
     }
     window.speechSynthesis.cancel(); // never overlap
     const u = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
-    const pick =
-      voices.find((v) => /en[-_]US/i.test(v.lang) && /Samantha|Google US English|Aria|Jenny|Zira|Female/i.test(v.name)) ??
-      voices.find((v) => /en[-_]US/i.test(v.lang)) ??
-      voices.find((v) => v.lang.startsWith("en"));
+    // Preference: Edge "Natural" neural voices → macOS Premium/Enhanced → Google → Samantha → any en-US.
+    const prefer = [
+      /Aria.*Natural|Jenny.*Natural|Michelle.*Natural|Emma.*Natural/i,
+      /Ava|Zoe|Allison|Susan|Samantha \(Enhanced\)|Premium|Enhanced/i,
+      /Google US English/i,
+      /Samantha/i,
+    ];
+    const en = voices.filter((v) => /^en[-_]US/i.test(v.lang));
+    const pick = prefer.map((rx) => en.find((v) => rx.test(v.name))).find(Boolean) ?? en[0] ?? voices.find((v) => v.lang.startsWith("en"));
     if (pick) u.voice = pick;
     u.rate = 1.02;
     u.pitch = 1.0;
@@ -93,6 +105,44 @@ export function AskAthena() {
     setStatus("speaking");
     window.speechSynthesis.speak(u);
   }, []);
+
+  const speak = useCallback(
+    async (text: string) => {
+      if (mutedRef.current) {
+        setStatus("ready");
+        return;
+      }
+      stopSpeaking();
+      // Neural voice (ElevenLabs) when the server has a key; otherwise the browser voice.
+      if (neuralRef.current !== "no") {
+        try {
+          setStatus("speaking");
+          const res = await fetch("/api/athena/speak", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          if (res.status === 503) {
+            neuralRef.current = "no";
+          } else if (res.ok) {
+            neuralRef.current = "yes";
+            const url = URL.createObjectURL(await res.blob());
+            const audio = new Audio(url);
+            audioRef.current = audio;
+            audio.onended = () => { URL.revokeObjectURL(url); if (audioRef.current === audio) { audioRef.current = null; setStatus("ready"); } };
+            audio.onerror = () => { URL.revokeObjectURL(url); speakBrowser(text); };
+            if (mutedRef.current) { setStatus("ready"); return; }
+            await audio.play();
+            return;
+          }
+        } catch {
+          /* fall through to the browser voice */
+        }
+      }
+      speakBrowser(text);
+    },
+    [speakBrowser],
+  );
 
   const ask = useCallback(
     async (raw: string) => {
@@ -126,7 +176,7 @@ export function AskAthena() {
         }
         setTurns((t) => [...t, { role: "assistant", content: json.answer!, display: json.display }]);
         if (json.suggestions?.length) setSuggestions(json.suggestions);
-        speak(json.answer);
+        void speak(json.answer);
       } catch {
         setTurns((t) => [...t, { role: "assistant", content: "I couldn't reach Athena right now. Try asking again." }]);
         setStatus("error");
