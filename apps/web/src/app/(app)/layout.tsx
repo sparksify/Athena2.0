@@ -38,7 +38,7 @@ const NAV: {
     icon: "M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a7 7 0 0114 0v1M17 8a3 3 0 100-6M22 21v-1a6 6 0 00-4-5.7",
   },
   { label: "Import", href: "/ops/import", icon: "M12 3v12m0-12L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" },
-  { label: "Conversations", icon: "M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" }, // Phase 6
+  { label: "Conversations", href: "/conversations", icon: "M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z" }, // Phase 6
   { label: "Opportunities", icon: "M12 21a9 9 0 110-18 9 9 0 010 18zm0-5a4 4 0 110-8" }, // Phase 7
   { label: "Appointments", icon: "M7 3v3m10-3v3M4 8h16M5 5h14a1 1 0 011 1v13a2 2 0 01-2 2H6a2 2 0 01-2-2V6a1 1 0 011-1z" }, // Phase 7
   { label: "Outreach", href: "/outreach", icon: "M3 11l16-6v14L3 13v-2zm4 3v4a2 2 0 004 0v-3" }, // Phase 5

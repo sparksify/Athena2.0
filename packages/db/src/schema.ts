@@ -409,6 +409,10 @@ export const message = pgTable(
     bodyText: text("body_text"),
     agentJobId: uuid("agent_job_id").references(() => agentJob.id),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    // Phase 6
+    conversationId: uuid("conversation_id"),
+    classification: text("classification"),
+    classificationConfidence: numeric("classification_confidence", { precision: 4, scale: 3 }),
   },
   (t) => [
     uniqueIndex("message_provider_message_idx").on(t.provider, t.providerMessageId),
@@ -442,5 +446,29 @@ export const outreachDraft = pgTable(
   (t) => [
     index("outreach_draft_org_status_idx2").on(t.orgId, t.status),
     index("outreach_draft_campaign_idx2").on(t.campaignId),
+  ],
+);
+
+// ---------------------------------------------------------------- Phase 6: conversation
+
+export const conversation = pgTable(
+  "conversation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    channel: text("channel", { enum: ["email", "sms"] }).notNull().default("email"),
+    state: text("state", { enum: ["open", "awaiting_candidate", "awaiting_human", "closed"] })
+      .notNull()
+      .default("open"),
+    flagged: boolean("flagged").notNull().default(false),
+    assignedUserId: uuid("assigned_user_id").references(() => appUser.id),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("conversation_org_queue_idx2").on(t.orgId, t.state, t.flagged, t.lastMessageAt),
+    index("conversation_candidate_idx2").on(t.candidateId),
   ],
 );

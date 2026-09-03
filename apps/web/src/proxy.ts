@@ -33,7 +33,8 @@ export async function proxy(request: NextRequest) {
     p.startsWith("/candidates") ||
     p.startsWith("/needs-human") ||
     p.startsWith("/consultants") ||
-    p.startsWith("/outreach");
+    p.startsWith("/outreach") ||
+    p.startsWith("/conversations");
   if (!user && protectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -44,5 +45,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/ops/:path*", "/candidates/:path*", "/needs-human", "/consultants/:path*", "/consultants", "/outreach/:path*", "/outreach", "/login"],
+  matcher: ["/", "/ops/:path*", "/candidates/:path*", "/needs-human", "/consultants/:path*", "/consultants", "/outreach/:path*", "/outreach", "/conversations/:path*", "/conversations", "/login"],
 };

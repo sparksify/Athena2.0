@@ -42,6 +42,7 @@ describe("migrations", () => {
       "candidate",
       "candidate_attribute",
       "candidate_source_link",
+      "conversation",
       "cost_record",
       "email_verification",
       "event",
