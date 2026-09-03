@@ -35,7 +35,7 @@ Required in `.env`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Settings → API Keys (publishable) |
 | `DATABASE_URL` | Supabase dashboard → Connect → Transaction pooler (needed by worker + migrate script) |
 | `TRIGGER_PROJECT_REF`, `TRIGGER_SECRET_KEY` | Trigger.dev dashboard (needed for durable jobs only) |
-| `ANTHROPIC_API_KEY`, `LANGFUSE_*`, `SENTRY_DSN` | optional until later phases; everything no-ops without them |
+| `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` for identity-linked keys), `LANGFUSE_*`, `SENTRY_DSN` | optional until later phases; everything no-ops without them |
 
 ## Database
 

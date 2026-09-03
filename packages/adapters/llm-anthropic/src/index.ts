@@ -12,8 +12,13 @@ export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
   private client: Anthropic;
 
-  constructor(apiKey = process.env.ANTHROPIC_API_KEY) {
-    this.client = new Anthropic({ apiKey });
+  constructor(apiKey = process.env.ANTHROPIC_API_KEY, workspaceId = process.env.ANTHROPIC_WORKSPACE_ID) {
+    // Identity-linked Console keys must name the workspace they act in;
+    // workspace-scoped keys ignore the header.
+    this.client = new Anthropic({
+      apiKey,
+      ...(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}),
+    });
   }
 
   async complete(req: LlmRequest): Promise<LlmResponse> {
