@@ -413,6 +413,8 @@ export const message = pgTable(
     conversationId: uuid("conversation_id"),
     classification: text("classification"),
     classificationConfidence: numeric("classification_confidence", { precision: 4, scale: 3 }),
+    // Phase 7
+    personaMailboxId: uuid("persona_mailbox_id"),
   },
   (t) => [
     uniqueIndex("message_provider_message_idx").on(t.provider, t.providerMessageId),
@@ -471,4 +473,153 @@ export const conversation = pgTable(
     index("conversation_org_queue_idx2").on(t.orgId, t.state, t.flagged, t.lastMessageAt),
     index("conversation_candidate_idx2").on(t.candidateId),
   ],
+);
+
+// ---------------------------------------------------------------- Phase 7
+
+export const personaMailbox = pgTable(
+  "persona_mailbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    name: text("name").notNull(),
+    address: text("address"),
+    domain: text("domain"),
+    signatureHtml: text("signature_html").notNull().default(""),
+    dailyCap: integer("daily_cap").notNull().default(50),
+    avatarSlug: text("avatar_slug"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("persona_mailbox_org_name_idx").on(t.orgId, t.name)],
+);
+
+export const consultant = pgTable(
+  "consultant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    userId: uuid("user_id").references(() => appUser.id),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    timezone: text("timezone").notNull().default("America/New_York"),
+    specialties: jsonb("specialties").$type<string[]>().notNull().default([]),
+    territories: jsonb("territories").$type<string[]>().notNull().default([]),
+    status: text("status", { enum: ["active", "paused"] }).notNull().default("active"),
+    maxLoad: integer("max_load").notNull().default(20),
+    ghlRef: text("ghl_ref"),
+    avatarSlug: text("avatar_slug"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("consultant_org_name_idx").on(t.orgId, t.name), index("consultant_user_idx2").on(t.userId)],
+);
+
+export const ASSIGNMENT_STATUSES = ["offered", "accepted", "declined", "reassigned", "taken_back"] as const;
+
+export const assignment = pgTable(
+  "assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    consultantId: uuid("consultant_id").notNull().references(() => consultant.id),
+    conversationId: uuid("conversation_id").references(() => conversation.id),
+    personaMailboxId: uuid("persona_mailbox_id").references(() => personaMailbox.id),
+    reason: jsonb("reason").notNull().default({}),
+    status: text("status", { enum: ASSIGNMENT_STATUSES }).notNull().default("offered"),
+    offeredAt: timestamp("offered_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    firstTouchAt: timestamp("first_touch_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("assignment_org_consultant_idx2").on(t.orgId, t.consultantId, t.status),
+    index("assignment_candidate_idx2").on(t.candidateId),
+  ],
+);
+
+/** FCC CRM stage vocabulary, in pipeline order (docs/design/consultant-accountability.md). */
+export const OPPORTUNITY_STAGES = [
+  "lead_in", "contact_made", "cq_sent", "cq_received", "talking_to_zors",
+  "d_day_scheduled", "contract_out", "closed_funded", "closed_lost",
+] as const;
+export type OpportunityStage = (typeof OPPORTUNITY_STAGES)[number];
+
+export const opportunity = pgTable(
+  "opportunity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    consultantId: uuid("consultant_id").notNull().references(() => consultant.id),
+    assignmentId: uuid("assignment_id").references(() => assignment.id),
+    stage: text("stage", { enum: OPPORTUNITY_STAGES }).notNull().default("lead_in"),
+    lostReason: text("lost_reason"),
+    valueUsd: numeric("value_usd", { precision: 12, scale: 2 }),
+    ghlRef: text("ghl_ref"),
+    stageUpdatedAt: timestamp("stage_updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("opportunity_org_stage_idx2").on(t.orgId, t.stage), index("opportunity_consultant_idx2").on(t.consultantId)],
+);
+
+export const appointment = pgTable(
+  "appointment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidate.id),
+    consultantId: uuid("consultant_id").notNull().references(() => consultant.id),
+    opportunityId: uuid("opportunity_id").references(() => opportunity.id),
+    provider: text("provider", { enum: ["calendly", "gcal", "manual"] }).notNull(),
+    externalRef: text("external_ref").notNull(),
+    kind: text("kind", { enum: ["consultation", "intro", "other"] }).notNull().default("consultation"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    status: text("status", { enum: ["scheduled", "showed", "no_show", "canceled"] }).notNull().default("scheduled"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("appointment_provider_ref_idx").on(t.provider, t.externalRef),
+    index("appointment_org_time_idx2").on(t.orgId, t.startsAt),
+    index("appointment_consultant_idx2").on(t.consultantId, t.startsAt),
+  ],
+);
+
+export const disposition = pgTable(
+  "disposition",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    appointmentId: uuid("appointment_id").notNull().references(() => appointment.id),
+    consultantId: uuid("consultant_id").notNull().references(() => consultant.id),
+    code: text("code").notNull(),
+    notes: text("notes"),
+    recordedVia: text("recorded_via", { enum: ["sms", "ui"] }).notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("disposition_appointment_idx").on(t.appointmentId)],
+);
+
+export const NUDGE_KINDS = ["plus_1h", "plus_4h", "plus_24h_manager"] as const;
+export type NudgeKind = (typeof NUDGE_KINDS)[number];
+
+export const consultantNudge = pgTable(
+  "consultant_nudge",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    consultantId: uuid("consultant_id").notNull().references(() => consultant.id),
+    assignmentId: uuid("assignment_id").references(() => assignment.id),
+    appointmentId: uuid("appointment_id").references(() => appointment.id),
+    kind: text("kind", { enum: NUDGE_KINDS }).notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    response: text("response"),
+    providerRef: text("provider_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("nudge_org_due_idx2").on(t.orgId, t.dueAt)],
 );

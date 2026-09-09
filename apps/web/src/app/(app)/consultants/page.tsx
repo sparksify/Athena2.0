@@ -2,20 +2,16 @@ import type { ReactNode } from "react";
 
 import { supabaseServer } from "@/lib/supabase/server";
 import { AgentAvatar, PersonAvatar } from "@/components/agent-avatar";
-import {
-  AGENTS, CONSULTANTS, CONSULT_FUNNEL, KPIS, OWNERSHIP, SLA_COUNTS, SLA_LABEL,
-  STAGES, STAGE_MIX, TAKE_BACK_QUEUE, UPCOMING_CONSULTS, WEEKLY_CONSULT_TARGET,
-  consultantAvatar, type CqStatus, type SlaState,
-} from "./demo-data";
+import { SLA_LABEL, STAGES, WEEKLY_CONSULT_TARGET, type CqStatus, type SlaState } from "./demo-data";
+import { loadConsultantData } from "./data";
 
 export const metadata = { title: "Consultant Command — Athena" };
 export const dynamic = "force-dynamic";
 
-/* Phase 7 preview: the accountability screen Nick asked for, rendered from
-   clearly-labeled demo fixtures. Hero reworked 2026-09-01 to Steve's
-   command-center mockup: weekly consult goal gauge, needs-attention rail,
-   KPI sparkline cards, Athena briefing, chevron funnel. Live wiring lands
-   with Phase 7. */
+/* Consultant Command: the accountability screen Nick asked for. Phase 7
+   wires it to live assignments/appointments/dispositions (see data.ts);
+   until the first handoff it renders the labeled sample fixtures. Hero
+   reworked 2026-09-01 to Steve's command-center mockup. */
 
 const money = (n: number) =>
   n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `$${n}`;
@@ -343,8 +339,10 @@ export default async function ConsultantsPreviewPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: me } = user
-    ? await supabase.from("user").select("full_name").eq("id", user.id).single()
+    ? await supabase.from("user").select("full_name, org_id").eq("id", user.id).single()
     : { data: null };
+  const data = await loadConsultantData(me?.org_id ?? null);
+  const { AGENTS, CONSULTANTS, CONSULT_FUNNEL, KPIS, OWNERSHIP, SLA_COUNTS, STAGE_MIX, TAKE_BACK_QUEUE, UPCOMING_CONSULTS, consultantAvatar, sample } = data;
   const firstName =
     me?.full_name?.split(" ")[0] ??
     (user?.email ? user.email.split("@")[0]!.replace(/^\w/, (c) => c.toUpperCase()) : "there");
@@ -371,15 +369,15 @@ export default async function ConsultantsPreviewPage() {
 
   return (
     <main className="mx-auto max-w-[1400px] p-8">
-      {/* preview banner */}
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-        <span className="font-semibold uppercase tracking-wider">Preview · demo numbers</span>
+      {/* sample-data banner: shown until the first routed lead exists */}
+      {sample && <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+        <span className="font-semibold uppercase tracking-wider">Sample data · no handoffs yet</span>
         <span className="text-amber-200/70">
-          Real consultant roster, placeholder metrics — every rate, time, and SLA state on this page
-          is demo data until Phase 7 wires live queries. The 48h take-back and CQ-before-consult
-          rules shown are the real spec.
+          Real consultant roster, placeholder metrics. Every rate, time, and SLA state switches to
+          live assignments, consults and dispositions after the first routed lead. The 48h take-back
+          and CQ-before-consult rules shown are enforced now.
         </span>
-      </div>
+      </div>}
 
       {/* header */}
       <div className="flex flex-wrap items-end justify-between gap-3">

@@ -103,6 +103,9 @@ export interface CrmSyncAdapter {
     externalContactRef?: string;
     name: string;
     stage: string;
+    /** Contact hints for first creation; ignored on update. */
+    email?: string;
+    phone?: string;
   }): Promise<{ externalRef: string }>;
   parseStageWebhook(payload: unknown): { externalRef: string; stage: string } | null;
 }

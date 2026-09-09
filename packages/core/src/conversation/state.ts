@@ -3,7 +3,7 @@ import type { EmailProvider } from "@athena/contracts";
 import { conversation, costRecord, interaction, message } from "@athena/db/schema";
 import { emit, type EmitTx } from "../events/emit";
 import { addSuppression } from "../outreach/suppress";
-import { ALL_CLASSIFICATIONS, type Classification } from "./classes";
+import { ALL_CLASSIFICATIONS, isRouteEligible, type Classification } from "./classes";
 import { rows } from "../db-rows";
 
 /** A human corrects the classifier. Recorded as an event so the override rate is measurable. */
@@ -22,6 +22,9 @@ export async function overrideClassification(
       orgId: args.orgId, type: "conversation.classification_overridden", entityType: "conversation",
       entityId: msg.conversationId, actorType: "user", actorId: args.userId,
       payload: { messageId: msg.id, from: msg.classification, fromConfidence: Number(msg.classificationConfidence ?? 0), to: args.classification },
+      enqueue: isRouteEligible(args.classification, 1) && msg.candidateId
+        ? [{ type: "routing.assign", payload: { candidateId: msg.candidateId, conversationId: msg.conversationId, trigger: "override", messageId: msg.id, actorId: args.userId } }]
+        : [],
     });
     if (args.classification === "unsubscribe" && msg.candidateId) {
       const email = rows<{ email: string | null }>(await tx.execute(sql`select lower(trim("primary_email")) as email from "candidate" where "id" = ${msg.candidateId}`))[0]?.email;

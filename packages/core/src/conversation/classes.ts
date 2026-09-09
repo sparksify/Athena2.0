@@ -53,3 +53,10 @@ export function isAutoReplyEligible(classification: string | null, confidence: n
     confidence >= AUTO_REPLY_THRESHOLD
   );
 }
+
+/** Classes that hand the candidate to a consultant once confident (Phase 7). */
+export const ROUTE_CLASSES: ReplyClass[] = ["positive", "interested"];
+export const ROUTE_THRESHOLD = 0.9;
+export function isRouteEligible(c: Classification, confidence: number): boolean {
+  return (ROUTE_CLASSES as string[]).includes(c) && confidence >= ROUTE_THRESHOLD;
+}

@@ -5,7 +5,7 @@ import type { LlmGateway } from "../llm/gateway";
 import { addSuppression } from "../outreach/suppress";
 import {
   ALL_CLASSIFICATIONS, AUTO_CLOSE_CLASSES, AUTO_REPLY_THRESHOLD, CLASS_DESCRIPTIONS,
-  LOW_URGENCY_CLASSES, isAutoReplyEligible, type Classification,
+  LOW_URGENCY_CLASSES, isAutoReplyEligible, isRouteEligible, type Classification,
 } from "./classes";
 import { buildConversationContext } from "./context";
 import { rows } from "../db-rows";
@@ -160,7 +160,12 @@ export async function classifyReply(
       .set({ conversationId, classification, classificationConfidence: confidence.toFixed(3) })
       .where(eq(message.id, msg.id));
 
-    const enqueue = route.action === "auto_reply_queued" ? [{ type: "conversation.auto_reply", payload: { messageId: msg.id } }] : [];
+    const enqueue: { type: string; payload: Record<string, unknown> }[] =
+      route.action === "auto_reply_queued" ? [{ type: "conversation.auto_reply", payload: { messageId: msg.id } }] : [];
+    // Phase 7: a confident buyer-positive reply hands off to routing (warm intro within 5 minutes).
+    if (isRouteEligible(classification, confidence) && msg.candidateId) {
+      enqueue.push({ type: "routing.assign", payload: { candidateId: msg.candidateId, conversationId, trigger: "positive_reply", messageId: msg.id } });
+    }
     await emit(tx, {
       orgId: msg.orgId,
       type: "conversation.classified",

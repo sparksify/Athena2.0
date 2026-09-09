@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar } from "@/components/agent-avatar";
-import { CONSULTANTS, KPIS, OVERVIEW_KPIS, UPCOMING_CONSULTS } from "./consultants/demo-data";
+import { loadConsultantData } from "./consultants/data";
 
 export const dynamic = "force-dynamic";
 
@@ -259,12 +259,12 @@ function Medal({ rank }: { rank: number }) {
   );
 }
 
-const JOURNEY = [
+const journey = (k: { medianFirstTouch: string; speedToConsult: string }) => [
   { label: "Assigned", value: null, color: "#818CF8", icon: OV.doc },
-  { label: "First touch", value: KPIS.medianFirstTouch, color: "#2DD4BF", icon: OV.chat },
+  { label: "First touch", value: k.medianFirstTouch, color: "#2DD4BF", icon: OV.chat },
   { label: "Appointment", value: "—", color: "#F59E0B", icon: OV.calendar },
-  { label: "Consult held", value: KPIS.speedToConsult, color: "#60A5FA", icon: OV.check },
-] as const;
+  { label: "Consult held", value: k.speedToConsult, color: "#60A5FA", icon: OV.check },
+];
 
 const SNAPSHOT_GRID = "grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr_1.4fr_1fr] items-center";
 
@@ -274,8 +274,10 @@ export default async function OverviewPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: me } = user
-    ? await supabase.from("user").select("full_name").eq("id", user.id).single()
+    ? await supabase.from("user").select("full_name, org_id").eq("id", user.id).single()
     : { data: null };
+  const { CONSULTANTS, KPIS, OVERVIEW_KPIS, UPCOMING_CONSULTS } = await loadConsultantData(me?.org_id ?? null);
+  const JOURNEY = journey(KPIS);
   const firstName =
     me?.full_name?.split(" ")[0] ??
     (user?.email ? user.email.split("@")[0]!.replace(/^\w/, (c) => c.toUpperCase()) : "there");
@@ -334,7 +336,7 @@ export default async function OverviewPage() {
 
   const scored7 = (weekEvents ?? []).filter((e) => e.type === "candidate.scored").length;
 
-  // Consultant figures share the Consultants page fixtures until Phase 7 wires live queries.
+  // Consultant figures come from the same live-or-sample source as Consultant Command.
   const topConsultants = [...CONSULTANTS]
     .sort((a, b) => b.consultsThisWeek - a.consultsThisWeek || b.showRate - a.showRate)
     .slice(0, 3);

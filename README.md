@@ -36,6 +36,9 @@ Required in `.env`:
 | `DATABASE_URL` | Supabase dashboard → Connect → Transaction pooler (needed by worker + migrate script) |
 | `TRIGGER_PROJECT_REF`, `TRIGGER_SECRET_KEY` | Trigger.dev dashboard (needed for durable jobs only) |
 | `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` for identity-linked keys), `LANGFUSE_*`, `SENTRY_DSN` | optional until later phases; everything no-ops without them |
+| `GMAIL_SERVICE_ACCOUNT_JSON` | Phase 7: Google Workspace service account (domain-wide delegation, `gmail.send`) that sends as the persona mailboxes; intros stay queued until set |
+| `GHL_API_KEY`, `GHL_LOCATION_ID`, `GHL_PIPELINE_ID`, `GHL_WEBHOOK_SECRET`, `MANAGER_SMS_TO` | Phase 7: SMS nudges, opportunity mirror, and the `/api/webhooks/ghl` guard |
+| `CALENDLY_WEBHOOK_SIGNING_KEY`, `APP_URL` | Phase 7: Calendly webhook verification; public base URL for accept links |
 
 ## Database
 

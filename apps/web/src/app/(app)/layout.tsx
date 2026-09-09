@@ -31,7 +31,15 @@ const NAV: {
   children?: { label: string; href: string }[];
 }[] = [
   { label: "Overview", href: "/", icon: "M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z" },
-  { label: "Consultants", href: "/consultants", badge: "preview", icon: "M10 11a4 4 0 100-8 4 4 0 000 8zM3 21v-1a7 7 0 0114 0v1M16 11l2 2 4-4" }, // Phase 7 preview
+  {
+    label: "Consultants",
+    icon: "M10 11a4 4 0 100-8 4 4 0 000 8zM3 21v-1a7 7 0 0114 0v1M16 11l2 2 4-4",
+    children: [
+      { label: "Command board", href: "/consultants" },
+      { label: "Work queue", href: "/consultants/queue" },
+      { label: "Roster & agents", href: "/consultants/roster" },
+    ],
+  }, // Phase 7
   {
     label: "Candidates",
     href: "/candidates",

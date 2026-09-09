@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { RouteButton } from "./route-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,8 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
     { data: interactions },
     { data: links },
     { data: events },
+    { data: assignments },
+    { data: me },
   ] = await Promise.all([
     supabase.from("score_snapshot").select("score, version, factors, created_at").eq("candidate_id", id).order("created_at", { ascending: false }).limit(1),
     supabase.from("identifier").select("type, value_normalized, email_verification(result, checked_at)").eq("candidate_id", id),
@@ -47,7 +50,13 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
     supabase.from("interaction").select("type, direction, occurred_at, payload").eq("candidate_id", id).order("occurred_at", { ascending: false }).limit(50),
     supabase.from("candidate_source_link").select("method, confidence, source_record(source_type, imported_at, source_batch_id)").eq("candidate_id", id),
     supabase.from("event").select("type, created_at").eq("entity_id", id).order("created_at", { ascending: false }).limit(25),
+    supabase.from("assignment").select("id, status, offered_at, first_touch_at, consultant(name), persona_mailbox(name)").eq("candidate_id", id).order("offered_at", { ascending: false }).limit(3),
+    supabase.from("user").select("role").eq("id", user.id).single(),
   ]);
+  const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+  const live = (assignments ?? []).find((a) => a.status === "offered" || a.status === "accepted") ?? null;
+  const lastAssignment = assignments?.[0] ?? null;
+  const canRoute = ["super_admin", "fcc_admin", "manager"].includes(me?.role ?? "") && !live && Boolean(process.env.DATABASE_URL);
 
   const snapshot = snapshots?.[0];
   const factors = (snapshot?.factors ?? []) as Factor[];
@@ -73,6 +82,21 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
               .filter(Boolean)
               .join(" · ")}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#8B95A7]">
+            {live ? (
+              <span>
+                Assigned to <span className="text-[#E7ECF3]">{one(live.consultant)?.name ?? "consultant"}</span>
+                {one(live.persona_mailbox)?.name ? ` by ${one(live.persona_mailbox)!.name}` : ""} · {live.status}
+                {live.first_touch_at ? " · first contact made" : " · awaiting first contact"}
+              </span>
+            ) : lastAssignment ? (
+              <span>Last assignment: {one(lastAssignment.consultant)?.name ?? "consultant"} · {lastAssignment.status.replace("_", " ")}</span>
+            ) : (
+              <span>Not routed to a consultant</span>
+            )}
+            {canRoute && <RouteButton candidateId={id} />}
+            {live && <a className="text-indigo-300 hover:underline" href={`/consultants/queue?assignment=${live.id}`}>open in queue</a>}
+          </div>
         </div>
         <div className="text-right">
           <div className="text-4xl font-semibold" style={{ fontVariantNumeric: "tabular-nums" }}>

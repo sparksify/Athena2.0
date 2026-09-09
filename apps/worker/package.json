@@ -9,12 +9,16 @@
     "deploy": "trigger deploy"
   },
   "dependencies": {
+    "@athena/calendar-calendly": "workspace:*",
     "@athena/contracts": "workspace:*",
     "@athena/core": "workspace:*",
+    "@athena/crm-ghl": "workspace:*",
     "@athena/db": "workspace:*",
+    "@athena/email-gmail": "workspace:*",
     "@athena/email-smartlead": "workspace:*",
     "@athena/identity-splink": "workspace:*",
     "@athena/llm-anthropic": "workspace:*",
+    "@athena/sms-ghl": "workspace:*",
     "@athena/verify-millionverifier": "workspace:*",
     "@trigger.dev/sdk": "^4.5.14",
     "drizzle-orm": "^0.45.2",

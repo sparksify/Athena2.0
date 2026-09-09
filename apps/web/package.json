@@ -10,11 +10,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@athena/calendar-calendly": "workspace:*",
     "@athena/contracts": "workspace:*",
     "@athena/core": "workspace:*",
+    "@athena/crm-ghl": "workspace:*",
     "@athena/db": "workspace:*",
+    "@athena/email-gmail": "workspace:*",
     "@athena/email-smartlead": "workspace:*",
     "@athena/llm-anthropic": "workspace:*",
+    "@athena/sms-ghl": "workspace:*",
     "@sentry/nextjs": "^10.72.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
