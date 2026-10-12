@@ -3,15 +3,13 @@
 import { useState, useTransition } from "react";
 import { runImport, type ImportActionResult } from "./actions";
 
-const SOURCE_TYPES = [
-  { value: "resume", label: "Resume / job board" },
-  { value: "tradeshow", label: "Trade show" },
-  { value: "purchased", label: "Purchased list" },
-];
+export interface SourceTypeOption { value: string; label: string; hint: string }
 
-export function ImportForm({ disabled }: { disabled: boolean }) {
+export function ImportForm({ disabled, sourceTypes }: { disabled: boolean; sourceTypes: SourceTypeOption[] }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<ImportActionResult | null>(null);
+  const [sourceType, setSourceType] = useState(sourceTypes[0]?.value ?? "");
+  const hint = sourceTypes.find((s) => s.value === sourceType)?.hint;
 
   return (
     <form
@@ -37,13 +35,25 @@ export function ImportForm({ disabled }: { disabled: boolean }) {
           <span className="mb-1 block text-xs text-[#8B95A7]">Source type</span>
           <select
             name="sourceType"
+            value={sourceType}
+            onChange={(e) => setSourceType(e.target.value)}
             disabled={disabled || pending}
-            className="rounded-md border border-[#2A3447] px-2 py-1.5 text-sm"
+            className="rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-sm text-[#E7ECF3]"
           >
-            {SOURCE_TYPES.map((s) => (
+            {sourceTypes.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
+        </label>
+        <label className="block min-w-64 flex-1">
+          <span className="mb-1 block text-xs text-[#8B95A7]">Label (show and city, consultant, campaign)</span>
+          <input
+            name="label"
+            maxLength={200}
+            placeholder="e.g. IFE 2026 · Las Vegas"
+            disabled={disabled || pending}
+            className="w-full rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-sm text-[#E7ECF3] placeholder:text-[#3D4A5C]"
+          />
         </label>
         <button
           type="submit"
@@ -54,6 +64,7 @@ export function ImportForm({ disabled }: { disabled: boolean }) {
         </button>
       </div>
 
+      {hint && <p className="mt-2 text-xs text-[#64748B]">{hint}</p>}
       {result && !result.ok && <p className="mt-3 text-sm text-red-400">{result.error}</p>}
       {result?.ok && result.report && (
         <div className="mt-4 rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-sm">
@@ -65,6 +76,7 @@ export function ImportForm({ disabled }: { disabled: boolean }) {
           <div className="mt-1 text-xs text-[#8B95A7]">
             {result.report.totalRows} rows · {result.report.newIdentifiers} new identifiers ·{" "}
             {result.report.verificationJobsQueued} verification job(s) queued ·{" "}
+            {result.report.crmLookupsQueued} CRM lookup(s) queued{typeof result.enriched === "number" && result.enriched > 0 ? ` (${result.enriched} matched already)` : ""} ·{" "}
             {result.report.missingCriticalFields} missing contact info ·{" "}
             {result.report.rejectedRows} rejected
           </div>

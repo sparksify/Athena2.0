@@ -8,6 +8,9 @@ const PRICING: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5": { input: 1, output: 5 },
 };
 
+/** Anthropic web search: $10 per 1,000 searches, on top of tokens. */
+const WEB_SEARCH_USD = 0.01;
+
 export class AnthropicProvider implements LlmProvider {
   readonly name = "anthropic";
   private client: Anthropic;
@@ -30,6 +33,9 @@ export class AnthropicProvider implements LlmProvider {
       ...(req.jsonSchema
         ? { output_config: { format: { type: "json_schema" as const, schema: req.jsonSchema } } }
         : {}),
+      ...(req.webSearch
+        ? { tools: [{ type: "web_search_20260209" as const, name: "web_search" as const, max_uses: req.webSearch.maxSearches }] }
+        : {}),
     });
 
     if (response.stop_reason === "refusal") {
@@ -44,6 +50,13 @@ export class AnthropicProvider implements LlmProvider {
     const pricing = PRICING[response.model] ?? PRICING["claude-opus-5"]!;
     const inputTokens = response.usage.input_tokens;
     const outputTokens = response.usage.output_tokens;
+    const searches = response.usage.server_tool_use?.web_search_requests ?? 0;
+    const sources = [...new Set(
+      response.content
+        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+        .flatMap((b) => (b.citations ?? []).map((c) => ("url" in c ? c.url : null)))
+        .filter((u): u is string => Boolean(u)),
+    )];
 
     return {
       text,
@@ -51,7 +64,9 @@ export class AnthropicProvider implements LlmProvider {
       model: response.model,
       inputTokens,
       outputTokens,
-      costUsd: (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000,
+      costUsd: (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000 + searches * WEB_SEARCH_USD,
+      searches,
+      sources,
     };
   }
 }

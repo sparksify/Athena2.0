@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
+import { SOURCE_TYPES } from "@athena/core";
 import { ImportForm } from "./import-form";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export default async function ImportPage() {
 
   const { data: batches } = await supabase
     .from("import_batch")
-    .select("id, filename, source_type, status, report, started_at, finished_at")
+    .select("id, filename, source_type, label, status, report, started_at, finished_at")
     .order("started_at", { ascending: false })
     .limit(25);
 
@@ -33,7 +34,7 @@ export default async function ImportPage() {
         </div>
       )}
 
-      <ImportForm disabled={!dbConfigured} />
+      <ImportForm disabled={!dbConfigured} sourceTypes={SOURCE_TYPES.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))} />
 
       <section className="mt-10">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
@@ -47,7 +48,7 @@ export default async function ImportPage() {
                 <summary className="flex cursor-pointer items-center justify-between px-4 py-2.5 text-sm">
                   <span>
                     <span className="font-medium">{b.filename}</span>
-                    <span className="ml-2 font-mono text-xs text-[#64748B]">{b.source_type}</span>
+                    <span className="ml-2 font-mono text-xs text-[#64748B]">{b.source_type}</span>{b.label && <span className="ml-2 text-xs text-[#A9B4C6]">{b.label}</span>}
                   </span>
                   <span className="flex items-center gap-3 text-xs text-[#8B95A7]">
                     <span style={{ fontVariantNumeric: "tabular-nums" }}>

@@ -63,6 +63,21 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
   const fin = financials?.[0]; // absent entirely for consultant role (RLS)
   const money = (v: unknown) => (v == null ? "—" : `$${Math.round(Number(v) / 1000)}k`);
 
+  const attr = (k: string) => (attributes ?? []).find((a) => a.key === k)?.value as unknown;
+  const crm = attr("crm_contact_id")
+    ? {
+        stage: attr("crm_stage") as string | null, status: attr("crm_opportunity_status") as string | null, pipeline: attr("crm_pipeline") as string | null,
+        tags: (attr("crm_tags") as string[] | undefined) ?? [], source: attr("crm_source") as string | null, assignedTo: attr("crm_assigned_to") as string | null,
+        lastContact: attr("crm_last_contact_at") as string | null, messagesIn: Number(attr("crm_messages_in") ?? 0), messagesOut: Number(attr("crm_messages_out") ?? 0),
+        appointments: Number(attr("crm_appointments") ?? 0), dnd: Boolean(attr("crm_dnd")), notes: attr("crm_notes") as string | null, value: attr("crm_opportunity_value_usd") as number | null,
+      }
+    : null;
+  const research = attr("research_note")
+    ? { note: String(attr("research_note")), sources: (attr("research_sources") as string[] | undefined) ?? [], signals: (attr("research_signals") as string[] | undefined) ?? [], role: attr("current_role") as string | null, company: attr("current_company") as string | null }
+    : null;
+  const HIDE = new Set(["crm_contact_id", "crm_tags", "crm_source", "crm_added_at", "crm_assigned_to", "crm_dnd", "crm_pipeline", "crm_stage", "crm_opportunity_status", "crm_opportunity_value_usd", "crm_opportunity_count", "crm_last_contact_at", "crm_messages_in", "crm_messages_out", "crm_appointments", "crm_notes", "crm_custom_fields", "research_note", "research_sources", "research_signals", "current_role", "current_company"]);
+  const plainAttributes = (attributes ?? []).filter((a) => !HIDE.has(a.key));
+
   const nextAction =
     candidate.status !== "new" && candidate.status !== "scored"
       ? `in flight — status ${candidate.status}`
@@ -154,13 +169,54 @@ export default async function Candidate360({ params }: { params: Promise<{ id: s
                 </div>
               );
             })}
-            {(attributes ?? []).map((a) => (
+            {plainAttributes.map((a) => (
               <div key={a.key} className="col-span-2 flex justify-between border-t border-[#161D2B] pt-1">
                 <span className="text-[#8B95A7]">{a.key}</span>
                 <span className="max-w-64 truncate text-right">{JSON.stringify(a.value)}</span>
               </div>
             ))}
           </dl>
+        </Section>
+
+        <Section title="In the CRM">
+          {!crm ? (
+            <p className="text-sm text-[#64748B]">{attr("crm_contact_id") === undefined && (events ?? []).some((e) => e.type === "candidate.crm_checked") ? "Not in GoHighLevel." : "CRM lookup pending (runs within 10 minutes of import)."}</p>
+          ) : (
+            <div className="text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                {crm.stage && <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs text-indigo-300">{crm.stage}</span>}
+                {crm.status && <span className={`rounded-full px-2 py-0.5 text-xs ${crm.status === "open" ? "bg-emerald-500/15 text-emerald-300" : crm.status === "won" ? "bg-amber-500/15 text-amber-300" : "bg-[#1B2333] text-[#8B95A7]"}`}>{crm.status}{crm.value ? ` · $${Number(crm.value).toLocaleString()}` : ""}</span>}
+                {crm.dnd && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300">do not disturb</span>}
+                {crm.tags.map((t) => <span key={t} className="rounded-full border border-[#2A3447] px-2 py-0.5 text-xs text-[#C3CCDB]">{t}</span>)}
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <dt className="text-[#8B95A7]">Pipeline</dt><dd>{crm.pipeline ?? "—"}</dd>
+                <dt className="text-[#8B95A7]">Source</dt><dd>{crm.source ?? "—"}</dd>
+                <dt className="text-[#8B95A7]">Assigned to</dt><dd>{crm.assignedTo ?? "—"}</dd>
+                <dt className="text-[#8B95A7]">Last contact</dt><dd>{crm.lastContact ? new Date(crm.lastContact).toLocaleDateString() : "—"}</dd>
+                <dt className="text-[#8B95A7]">Messages</dt><dd>{crm.messagesOut} sent · {crm.messagesIn} received</dd>
+                <dt className="text-[#8B95A7]">Appointments</dt><dd>{crm.appointments}</dd>
+              </dl>
+              {crm.notes && <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-[#161D2B] bg-[#0F1522] p-3 text-xs leading-relaxed text-[#C3CCDB]">{crm.notes}</pre>}
+            </div>
+          )}
+        </Section>
+
+        <Section title="Research">
+          {!research ? (
+            <p className="text-sm text-[#64748B]">{(candidate.current_score ?? 0) >= 70 ? "Research queued; a sourced note lands within the next cycle." : "Research runs for candidates scoring 70 and above."}</p>
+          ) : (
+            <div className="text-sm">
+              {(research.role || research.company) && <div className="text-[#E7ECF3]">{[research.role, research.company].filter(Boolean).join(" · ")}</div>}
+              <p className="mt-1 leading-relaxed text-[#C3CCDB]">{research.note}</p>
+              {research.signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{research.signals.map((x) => <span key={x} className="rounded-full bg-sky-500/15 px-2 py-0.5 text-xs text-sky-300">{x}</span>)}</div>}
+              {research.sources.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-xs">
+                  {research.sources.map((u) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className="text-indigo-300 hover:underline">{u.replace(/^https?:\/\//, "").slice(0, 80)}</a></li>)}
+                </ul>
+              )}
+            </div>
+          )}
         </Section>
 
         <Section title="What happened">

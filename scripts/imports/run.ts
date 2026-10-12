@@ -1,6 +1,6 @@
 // Import a source file into Athena.
 //
-//   pnpm run import scripts/imports/inbox/pilot.csv --source resume
+//   pnpm run import scripts/imports/inbox/pilot.csv --source resume [--label "where it came from"]
 //
 // Reads the CSV with DuckDB (fast, tolerant of large files), runs the source
 // parser, and writes source records / candidates / identifiers through
@@ -24,9 +24,10 @@ async function main() {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith("--"));
   const source = args[args.indexOf("--source") + 1];
+  const label = args.includes("--label") ? args[args.indexOf("--label") + 1] : undefined;
   const orgId = args.includes("--org") ? args[args.indexOf("--org") + 1]! : DEFAULT_ORG;
   if (!file || !source || !PARSERS[source]) {
-    console.error(`usage: pnpm run import <file.csv> --source <${Object.keys(PARSERS).join("|")}> [--org <uuid>]`);
+    console.error(`usage: pnpm run import <file.csv> --source <${Object.keys(PARSERS).join("|")}> [--org <uuid>] [--label "IFE 2026 · Las Vegas"]`);
     process.exit(1);
   }
 
@@ -59,6 +60,7 @@ async function main() {
   const { batchId } = await importFile(db, {
     orgId,
     sourceType: source,
+    label,
     filename: file.split("/").pop()!,
     rows,
   });

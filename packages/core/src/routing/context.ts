@@ -5,7 +5,7 @@ import { rows } from "../db-rows";
 import { consultantStats, statsFor } from "./stats";
 import type { RoutingConsultant, RoutingContext } from "./types";
 
-const INTEREST_KEYS = new Set(["interest", "interests", "brand", "brands", "industry", "franchise_category", "category", "campaign_brand"]);
+const INTEREST_KEYS = new Set(["interest", "interests", "brand", "brands", "industry", "franchise_category", "category", "campaign_brand", "crm_tags"]);
 
 /** Loads everything the rules need in a handful of queries. */
 export async function buildRoutingContext(

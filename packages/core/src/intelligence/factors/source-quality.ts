@@ -1,14 +1,7 @@
+import { SOURCE_QUALITY } from "../../ingest/source-types";
 import type { ScoringFactor } from "../types";
 
-const QUALITY: Record<string, number> = {
-  referral: 7,
-  cq: 7,
-  website: 5,
-  tradeshow: 5,
-  facebook: 4,
-  resume: 4,
-  purchased: 2,
-};
+const QUALITY: Record<string, number> = { ...SOURCE_QUALITY, website: 5, facebook: 4 };
 
 /** Where the record came from predicts its quality. Max 7; best source wins. */
 export const sourceQuality: ScoringFactor = (ctx) => {

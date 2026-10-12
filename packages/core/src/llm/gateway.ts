@@ -8,6 +8,8 @@ export interface GatewayCallContext {
   agentJobId?: string;
   /** Langfuse trace name; defaults to the request's purpose. */
   traceName?: string;
+  /** Budget bucket this spend counts against (e.g. "research"). */
+  purpose?: string;
 }
 
 /**
@@ -42,6 +44,8 @@ export class LlmGateway {
         inputTokens: res.inputTokens,
         outputTokens: res.outputTokens,
         durationMs: Date.now() - started,
+        ...(ctx.purpose ? { purpose: ctx.purpose } : {}),
+        ...(res.searches ? { searches: res.searches } : {}),
       },
     });
 

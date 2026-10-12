@@ -1,6 +1,7 @@
 import type { ScoringFactor } from "../types";
 import { contactability } from "./contactability";
 import { cqCompletion } from "./cq-completion";
+import { crmPipeline } from "./crm-pipeline";
 import { financialBand } from "./financial-band";
 import { geography } from "./geography";
 import { interestKnown } from "./interest-known";
@@ -24,4 +25,5 @@ export const FACTORS: ScoringFactor[] = [
   contactability,
   priorOptOut,
   sourceQuality,
+  crmPipeline,
 ];

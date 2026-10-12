@@ -39,6 +39,7 @@ Required in `.env`:
 | `GMAIL_SERVICE_ACCOUNT_JSON` | Phase 7: Google Workspace service account (domain-wide delegation, `gmail.send`) that sends as the persona mailboxes; intros stay queued until set |
 | `GHL_API_KEY`, `GHL_LOCATION_ID`, `GHL_PIPELINE_ID`, `GHL_WEBHOOK_SECRET`, `MANAGER_SMS_TO` | Phase 7: SMS nudges, opportunity mirror, and the `/api/webhooks/ghl` guard |
 | `CALENDLY_WEBHOOK_SIGNING_KEY`, `APP_URL` | Phase 7: Calendly webhook verification; public base URL for accept links |
+| `RESEARCH_MIN_SCORE`, `RESEARCH_DAILY_BUDGET_USD` | Enrichment: score floor for the web-research note (default 70) and the daily spend cap (default $25). GHL history lookups reuse `GHL_API_KEY` + `GHL_LOCATION_ID` |
 
 ## Database
 

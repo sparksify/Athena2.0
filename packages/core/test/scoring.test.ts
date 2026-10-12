@@ -54,7 +54,7 @@ describe("computeScore — pure factor math", () => {
     // 20 recency + 12 engagement + 15 CQ + 15 financial + 8 appointment
     // + 5 showed + 8 interest + 5 geography + 10 contactable + 0 + 4 resume = 102 → 100
     expect(score).toBe(100);
-    expect(factors).toHaveLength(11);
+    expect(factors).toHaveLength(12);
     expect(factors.every((f) => typeof f.reason === "string" && f.reason.length > 0)).toBe(true);
   });
 

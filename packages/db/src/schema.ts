@@ -253,6 +253,7 @@ export const importBatch = pgTable("import_batch", {
   orgId: uuid("org_id").notNull().references(() => org.id),
   sourceType: text("source_type").notNull(),
   filename: text("filename").notNull(),
+  label: text("label"),
   status: text("status", { enum: ["running", "completed", "failed"] })
     .notNull()
     .default("running"),

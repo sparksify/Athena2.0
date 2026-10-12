@@ -1,5 +1,5 @@
 import type { EmailVerifier } from "@athena/contracts";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   agentJob,
@@ -192,8 +192,8 @@ describe("importFile — Phase 1 proofs", () => {
     expect(report.newCandidates).toBe(2);
     expect(report.verification).toEqual({ valid: 1, invalid: 0, risky: 1, unknown: 0, unverified: 0 });
     expect(report.verificationCostUsd).toBeGreaterThan(0);
-    // queue fully drained
-    expect((await db.select({ n: count() }).from(agentJob).where(eq(agentJob.status, "queued")))[0]!.n).toBe(0);
+    // verification queue fully drained (CRM lookups wait for their own drain)
+    expect((await db.select({ n: count() }).from(agentJob).where(and(eq(agentJob.status, "queued"), eq(agentJob.type, "verify.email"))))[0]!.n).toBe(0);
     await client.close();
   });
 });

@@ -13,6 +13,8 @@ export interface LlmRequest {
   maxTokens?: number;
   /** When set, the provider must return JSON conforming to this schema. */
   jsonSchema?: Record<string, unknown>;
+  /** Provider-hosted web search; `maxSearches` caps spend per call. */
+  webSearch?: { maxSearches: number };
 }
 
 export interface LlmResponse {
@@ -23,6 +25,10 @@ export interface LlmResponse {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  /** Web searches the provider ran for this call (0 when none). */
+  searches?: number;
+  /** URLs the provider cited, when web search ran. */
+  sources?: string[];
 }
 
 export interface LlmProvider {
@@ -108,6 +114,44 @@ export interface CrmSyncAdapter {
     phone?: string;
   }): Promise<{ externalRef: string }>;
   parseStageWebhook(payload: unknown): { externalRef: string; stage: string } | null;
+}
+
+/** A person's history in the CRM, normalized. Read-only; the CRM stays a mirror for writes (ADR 0004). */
+export interface CrmContactHistory {
+  contactRef: string;
+  tags: string[];
+  /** Do-not-disturb on any channel: treated as an opt-out. */
+  dnd: boolean;
+  source: string | null;
+  addedAt: Date | null;
+  assignedTo: string | null;
+  customFields: Record<string, unknown>;
+  opportunities: {
+    ref: string;
+    name: string | null;
+    pipeline: string | null;
+    stage: string | null;
+    status: string;
+    valueUsd: number | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+  }[];
+  messages: {
+    ref: string;
+    channel: "email" | "sms" | "call" | "other";
+    direction: "inbound" | "outbound";
+    occurredAt: Date;
+    subject: string | null;
+    body: string | null;
+  }[];
+  appointments: { ref: string; title: string | null; startsAt: Date; endsAt: Date | null; status: string | null }[];
+  notes: { ref: string; body: string; createdAt: Date | null }[];
+}
+
+export interface CrmReader {
+  readonly name: string;
+  /** Finds the contact by email first, then phone. Null when the CRM has never seen them. */
+  lookupContact(query: { email?: string | null; phone?: string | null }): Promise<CrmContactHistory | null>;
 }
 
 // ---------------------------------------------------------------- Audiences

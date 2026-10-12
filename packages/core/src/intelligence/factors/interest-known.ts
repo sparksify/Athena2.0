@@ -1,6 +1,6 @@
 import type { ScoringFactor } from "../types";
 
-const INTEREST_KEYS = ["franchise_interest", "industries_considered", "brands_presented"];
+const INTEREST_KEYS = ["franchise_interest", "industries_considered", "brands_presented", "crm_tags"];
 
 /** Do we know what they were actually interested in? Max 8. */
 export const interestKnown: ScoringFactor = (ctx) => {

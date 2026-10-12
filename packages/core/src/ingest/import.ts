@@ -1,6 +1,7 @@
 import {
   agentJob,
   candidate,
+  candidateAttribute,
   candidateSourceLink,
   emailVerification,
   event,
@@ -21,6 +22,8 @@ type Db = EmitTx & {
 export interface ImportFileArgs {
   orgId: string;
   sourceType: string;
+  /** What the operator said about this file: show name and city, consultant, campaign. */
+  label?: string | null;
   filename: string;
   rows: Record<string, unknown>[];
 }
@@ -37,6 +40,7 @@ export interface ImportReport {
   deterministicConflicts: number;
   newIdentifiers: number;
   verificationJobsQueued: number;
+  crmLookupsQueued: number;
   missingCriticalFields: number;
   normalizationErrors: number;
   parserErrors: { row: number; error: string }[];
@@ -65,12 +69,13 @@ export async function importFile(
   args: ImportFileArgs,
 ): Promise<{ batchId: string; report: ImportReport }> {
   const started = Date.now();
+  const label = args.label?.trim() || null;
   const parser = PARSERS[args.sourceType];
   if (!parser) throw new Error(`no parser for source type '${args.sourceType}'`);
 
   const [batch] = await db
     .insert(importBatch)
-    .values({ orgId: args.orgId, sourceType: args.sourceType, filename: args.filename })
+    .values({ orgId: args.orgId, sourceType: args.sourceType, filename: args.filename, label: args.label?.trim() || null })
     .returning({ id: importBatch.id });
   const batchId = batch!.id;
 
@@ -84,6 +89,7 @@ export async function importFile(
     deterministicConflicts: 0,
     newIdentifiers: 0,
     verificationJobsQueued: 0,
+    crmLookupsQueued: 0,
     missingCriticalFields: 0,
     normalizationErrors: 0,
     parserErrors: [],
@@ -154,6 +160,7 @@ export async function importFile(
 
         const events: (typeof event.$inferInsert)[] = [];
         const verifyJobs: { identifierId: string; email: string }[] = [];
+        const touched = new Set<string>();
 
         // 3. Deterministic identity, row by row (in-chunk matches included).
         for (const r of rows) {
@@ -253,9 +260,21 @@ export async function importFile(
               method: "exact",
             })
             .onConflictDoNothing();
+          touched.add(candidateId);
+          if (label) {
+            const dup = await tx.select({ id: candidateAttribute.id }).from(candidateAttribute)
+              .where(and(eq(candidateAttribute.candidateId, candidateId), eq(candidateAttribute.key, "source_label"), sql`${candidateAttribute.value} = ${JSON.stringify(label)}::jsonb`)).limit(1);
+            if (!dup[0]) {
+              await tx.insert(candidateAttribute).values({ orgId: args.orgId, candidateId, key: "source_label", value: label, confidence: "1.0", sourceRecordId: recordId });
+            }
+          }
         }
 
-        // 4. Verification outbox + events, same transaction.
+        // 4. Verification + CRM lookup outbox + events, same transaction.
+        if (touched.size > 0) {
+          await tx.insert(agentJob).values([...touched].map((candidateId) => ({ orgId: args.orgId, type: "crm.lookup", payload: { candidateId } })));
+          report.crmLookupsQueued += touched.size;
+        }
         if (verifyJobs.length > 0) {
           await tx.insert(agentJob).values(
             verifyJobs.map((v) => ({

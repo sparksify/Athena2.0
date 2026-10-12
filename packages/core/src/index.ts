@@ -29,6 +29,7 @@ export {
 } from "./identity/resolve";
 export * from "./ingest/normalize";
 export { PARSERS } from "./ingest/parsers/index";
+export { SOURCE_TYPES, SOURCE_QUALITY, sourceTypeLabel, type SourceTypeValue } from "./ingest/source-types";
 export { parseCsv } from "./ingest/csv";
 export type { ParsedRecord, SourceParser } from "./ingest/types";
 export { addSuppression, isSuppressed, type AddSuppressionArgs } from "./outreach/suppress";
@@ -66,3 +67,9 @@ export { DISPOSITION_CODES, parseDispositionReply, recordDisposition, handleInbo
 export { syncOpportunity, applyCrmStage } from "./accountability/crm";
 export { drainRoutingJobs, ROUTING_JOB_TYPES, type DrainDeps, type DrainSummary } from "./routing/drain";
 export { loadBoard, slaFor, WEEKLY_CONSULT_TARGET, type Board, type BoardConsultant, type BoardLead, type BoardAppointment, type SlaState } from "./routing/board";
+// Enrichment
+export { enrichFromCrm, enqueueCrmLookups, drainCrmLookups, CRM_JOB_TYPE, CRM_ATTRIBUTE_KEYS, type CrmEnrichResult } from "./ingest/crm-enrich";
+export {
+  researchCandidate, enqueueResearch, drainResearch, researchSpentToday,
+  RESEARCH_JOB_TYPE, RESEARCH_MODEL, RESEARCH_MIN_SCORE, RESEARCH_DAILY_BUDGET_USD, type ResearchResult,
+} from "./intelligence/research";

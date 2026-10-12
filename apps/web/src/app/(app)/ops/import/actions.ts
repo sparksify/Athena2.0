@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@athena/db";
-import { batchReport, importFile, parseCsv, PARSERS, scoreCandidates } from "@athena/core";
+import { batchReport, drainCrmLookups, enqueueResearch, importFile, parseCsv, PARSERS, scoreCandidates } from "@athena/core";
+import { GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
 
 const IMPORT_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
@@ -13,6 +14,7 @@ export interface ImportActionResult {
   error?: string;
   report?: Awaited<ReturnType<typeof batchReport>>;
   scored?: number;
+  enriched?: number;
 }
 
 export async function runImport(formData: FormData): Promise<ImportActionResult> {
@@ -50,22 +52,31 @@ export async function runImport(formData: FormData): Promise<ImportActionResult>
     };
   }
 
+  const label = String(formData.get("label") ?? "").trim().slice(0, 200);
   const db = getDb();
   const { batchId } = await importFile(db, {
     orgId: me.org_id,
     sourceType,
     filename: file.name,
+    label: label || null,
     rows,
   });
 
-  // Small batches get scored inline so the dashboard lights up immediately.
+  // Small batches get enriched and scored inline so the first look at the
+  // list already carries CRM history; bigger ones finish on the cron.
+  let enriched = 0;
+  if (rows.length <= 150 && GhlCrmAdapter.readConfigured()) {
+    const r = await drainCrmLookups(db, new GhlCrmAdapter(), { orgId: me.org_id, limit: rows.length });
+    enriched = r.enriched;
+  }
   let scored = 0;
   if (rows.length <= 2000) {
     scored = (await scoreCandidates(db, me.org_id)).scored;
+    if (process.env.ANTHROPIC_API_KEY) await enqueueResearch(db, me.org_id, { limit: 200 });
   }
 
   const report = await batchReport(db, me.org_id, batchId);
   revalidatePath("/ops/import");
   revalidatePath("/");
-  return { ok: true, report, scored };
+  return { ok: true, report, scored, enriched };
 }
