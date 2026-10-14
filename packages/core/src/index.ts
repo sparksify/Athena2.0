@@ -60,7 +60,7 @@ export { recordFirstTouch, type TouchChannel } from "./routing/first-touch";
 export { sendWarmIntro, listPersonas, INTRO_MODEL, type IntroOutcome, type IntroRefuseReason } from "./routing/intro";
 export { STAGE_LABELS, PIPELINE_STAGES, advanceStage, nextStage, stageFromLabel, stageIndex } from "./accountability/stages";
 export { NUDGE_LADDER, TAKE_BACK_AFTER_MS, nudgeText } from "./accountability/ladder";
-export { runAccountabilityTick, openNudgesFor, type TickSummary } from "./accountability/nudges";
+export { runAccountabilityTick, openNudgesFor, type TickSummary, type SmsResolver } from "./accountability/nudges";
 export { takeBackAssignment } from "./accountability/take-back";
 export { handleCalendarEvent, type CalendarEvent, type AppointmentResult } from "./accountability/appointments";
 export { DISPOSITION_CODES, parseDispositionReply, recordDisposition, handleInboundSms, type DispositionCode, type InboundSmsResult } from "./accountability/dispositions";

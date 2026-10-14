@@ -8,6 +8,7 @@ import {
   acceptAssignment, declineAssignment, recordDisposition, recordFirstTouch, routeCandidate, takeBackAssignment,
   type DispositionCode, type TouchChannel,
 } from "@athena/core";
+import { GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
 
 const MANAGER_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
@@ -145,4 +146,43 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
   }).where(and(eq(personaMailbox.id, id), eq(personaMailbox.orgId, who.orgId)));
   revalidatePath("/consultants/roster");
   return { ok: true };
+}
+
+/**
+ * Pulls the agency's sub-accounts from GHL and fills ghl_ref for every
+ * consultant whose name matches a sub-account name. Never overwrites a
+ * value someone typed. Returns what matched and what didn't so the gaps
+ * can be filled by hand.
+ */
+export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: string[]; unmatchedConsultants?: string[]; unmatchedLocations?: string[] }> {
+  const who = await actor(MANAGER_ROLES);
+  if ("error" in who) return { ok: false, error: who.error };
+  if (!process.env.GHL_API_KEY || !(process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS)) {
+    return { ok: false, error: "Set GHL_API_KEY (agency token) and GHL_COMPANY_ID (agency id) first." };
+  }
+  let locations: { id: string; name: string | null }[];
+  try { locations = await GhlCrmAdapter.listLocations(); } catch (err) { return { ok: false, error: String(err) }; }
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z]/g, "");
+  const db = getDb();
+  const rows = await db.select({ id: consultant.id, name: consultant.name, ghlRef: consultant.ghlRef }).from(consultant).where(eq(consultant.orgId, who.orgId));
+  const matched: string[] = [];
+  const usedLoc = new Set<string>();
+  for (const c of rows) {
+    if (c.ghlRef) { usedLoc.add(c.ghlRef); continue; }
+    const [first, ...rest] = c.name.split(" ");
+    const last = rest.at(-1) ?? "";
+    const hit = locations.find((l) => l.name && !usedLoc.has(l.id) && (norm(l.name) === norm(c.name) || (norm(l.name).includes(norm(first ?? "")) && norm(l.name).includes(norm(last)))));
+    if (hit) {
+      await db.update(consultant).set({ ghlRef: hit.id }).where(eq(consultant.id, c.id));
+      usedLoc.add(hit.id);
+      matched.push(`${c.name} → ${hit.name}`);
+    }
+  }
+  revalidatePath("/consultants/roster");
+  return {
+    ok: true,
+    matched,
+    unmatchedConsultants: rows.filter((c) => !c.ghlRef && !matched.some((m) => m.startsWith(c.name))).map((c) => c.name),
+    unmatchedLocations: locations.filter((l) => !usedLoc.has(l.id)).map((l) => `${l.name ?? "?"} (${l.id})`),
+  };
 }

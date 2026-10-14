@@ -8,7 +8,7 @@ import { rows } from "../db-rows";
 export const CRM_ATTRIBUTE_KEYS = [
   "crm_contact_id", "crm_tags", "crm_source", "crm_added_at", "crm_assigned_to", "crm_dnd",
   "crm_pipeline", "crm_stage", "crm_opportunity_status", "crm_opportunity_value_usd", "crm_opportunity_count",
-  "crm_last_contact_at", "crm_messages_in", "crm_messages_out", "crm_appointments", "crm_notes", "crm_custom_fields",
+  "crm_last_contact_at", "crm_messages_in", "crm_messages_out", "crm_appointments", "crm_notes", "crm_custom_fields", "crm_locations",
 ] as const;
 
 export interface CrmEnrichResult {
@@ -84,6 +84,7 @@ export async function enrichFromCrm(
       crm_appointments: history.appointments.length,
       crm_notes: notes || null,
       crm_custom_fields: history.customFields,
+      crm_locations: (history.locations ?? []).map((l) => l.name ?? l.id),
     };
     const toWrite = Object.entries(values).filter(([, v]) => v != null && !(Array.isArray(v) && v.length === 0) && !(typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0));
 

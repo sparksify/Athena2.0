@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setConsultantStatus, updatePersona, upsertConsultant, type ActionResult } from "../actions";
+import { setConsultantStatus, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
 import type { PersonaRow, RosterRow, UserOption } from "./page";
 
 const INPUT = "w-full rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-xs text-[#E7ECF3] placeholder:text-[#3D4A5C] focus:border-indigo-500 focus:outline-none";
@@ -33,7 +33,7 @@ export function ConsultantForm({ row, users }: { row?: RosterRow; users: UserOpt
           {users.map((u) => <option key={u.id} value={u.id}>{u.full_name ? `${u.full_name} · ` : ""}{u.email}</option>)}
         </select>
       </label>
-      <label className="md:col-span-2"><span className={LABEL}>GHL user/contact ref (optional)</span><input name="ghl_ref" defaultValue={row?.ghl_ref ?? ""} className={INPUT} /></label>
+      <label className="md:col-span-2"><span className={LABEL}>GHL sub-account (location) ID</span><input name="ghl_ref" defaultValue={row?.ghl_ref ?? ""} placeholder="their sub-account id; texts and the pipeline mirror go here" className={INPUT} /></label>
       <div className="flex items-end gap-2 md:col-span-2"><button className={PRIMARY} disabled={pending}>{row ? "Save" : "Add consultant"}</button>{msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}</div>
     </form>
   );
@@ -61,5 +61,25 @@ export function PersonaForm({ row, avatar }: { row: PersonaRow; avatar: string }
       <label className="mt-2 flex items-center gap-2 text-xs text-[#C3CCDB]"><input type="checkbox" name="active" defaultChecked={row.active} /> Active (can be assigned handoffs)</label>
       <div className="mt-3 flex items-center gap-2"><button className={PRIMARY} disabled={pending}>Save</button>{msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}</div>
     </form>
+  );
+}
+
+export function SyncSubAccountsButton() {
+  const [pending, start] = useTransition();
+  const [out, setOut] = useState<Awaited<ReturnType<typeof syncGhlSubAccounts>> | null>(null);
+  return (
+    <div>
+      <button className={PRIMARY} disabled={pending} onClick={() => start(async () => setOut(await syncGhlSubAccounts()))}>
+        {pending ? "Matching…" : "Match consultants to GHL sub-accounts"}
+      </button>
+      {out && !out.ok && <p className="mt-2 text-xs text-red-400">{out.error}</p>}
+      {out?.ok && (
+        <div className="mt-2 space-y-1 text-xs text-[#C3CCDB]">
+          <div>Matched: {out.matched?.length ? out.matched.join(" · ") : "none new"}</div>
+          {out.unmatchedConsultants?.length ? <div className="text-amber-300">Still need an ID: {out.unmatchedConsultants.join(", ")}</div> : null}
+          {out.unmatchedLocations?.length ? <div className="text-[#8B95A7]">Sub-accounts not linked: {out.unmatchedLocations.join(" · ")}</div> : null}
+        </div>
+      )}
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
-import { ConsultantForm, PersonaForm, StatusButton } from "./forms";
+import { ConsultantForm, PersonaForm, StatusButton, SyncSubAccountsButton } from "./forms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Consultant roster — Athena" };
@@ -67,6 +67,12 @@ export default async function RosterPage() {
           </tbody>
         </table>
       </section>
+
+      <div className="mt-4 rounded-lg border border-[#1E2635] bg-[#121826] p-4">
+        <div className="text-[13px] font-medium text-[#E7ECF3]">GoHighLevel sub-accounts</div>
+        <p className="mb-3 mt-1 text-[12px] text-[#8B95A7]">Each consultant has their own GHL sub-account. Nudge texts and the pipeline mirror go to that account, and lead lookups search all of them. Match by name, then fix any gaps in the edit form.</p>
+        <SyncSubAccountsButton />
+      </div>
 
       <details className="mt-4 rounded-lg border border-[#1E2635] bg-[#121826] p-4">
         <summary className="cursor-pointer text-[13px] font-medium text-[#E7ECF3]">Add a consultant</summary>

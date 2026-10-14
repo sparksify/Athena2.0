@@ -16,8 +16,13 @@ export class GhlSmsProvider implements SmsProvider {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
+  /** Needs the key; the sub-account comes per consultant (GHL_LOCATION_ID is the default). */
   static configured(): boolean {
-    return Boolean(process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID);
+    return Boolean(process.env.GHL_API_KEY);
+  }
+
+  forLocation(locationId: string): GhlSmsProvider {
+    return new GhlSmsProvider(this.apiKey, locationId, this.fetchImpl);
   }
 
   async sendSms(msg: { to: string; body: string }): Promise<{ providerMessageId: string }> {

@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import type { CrmSyncAdapter, EmailProvider } from "@athena/contracts";
-import { agentJob } from "@athena/db/schema";
+import { agentJob, consultant, opportunity } from "@athena/db/schema";
 import { syncOpportunity } from "../accountability/crm";
 import type { EmitTx } from "../events/emit";
 import type { LlmGateway } from "../llm/gateway";
@@ -13,8 +13,8 @@ export interface DrainDeps {
   llm: LlmGateway;
   /** Persona sender; null until the Gmail service account is configured (intros stay queued). */
   email: EmailProvider | null;
-  /** GHL mirror; null until configured (sync jobs stay queued). */
-  crm: CrmSyncAdapter | null;
+  /** GHL mirror; null until configured (sync jobs stay queued). A function picks the consultant's own sub-account. */
+  crm: CrmSyncAdapter | null | ((consultant: { id: string; ghlRef: string | null }) => CrmSyncAdapter | null);
   appUrl: string;
 }
 
@@ -54,7 +54,9 @@ export async function drainRoutingJobs(db: EmitTx, deps: DrainDeps, opts: { limi
         if ((result as { sent: boolean }).sent) summary.introsSent += 1;
         else summary.introsRefused += 1;
       } else {
-        result = await syncOpportunity(db, deps.crm!, { opportunityId: String(p.opportunityId), agentJobId: job.id });
+        const crm = typeof deps.crm === "function" ? await resolveCrm(db, deps.crm, String(p.opportunityId)) : deps.crm;
+        if (!crm) throw new Error("no CRM sub-account for this consultant (set ghl_ref on the roster or GHL_LOCATION_ID)");
+        result = await syncOpportunity(db, crm, { opportunityId: String(p.opportunityId), agentJobId: job.id });
         summary.synced += 1;
       }
       await db.update(agentJob).set({ status: "succeeded", finishedAt: new Date(), result: result as Record<string, unknown> }).where(eq(agentJob.id, job.id));
@@ -64,4 +66,14 @@ export async function drainRoutingJobs(db: EmitTx, deps: DrainDeps, opts: { limi
     }
   }
   return summary;
+}
+
+async function resolveCrm(
+  db: EmitTx,
+  pick: (c: { id: string; ghlRef: string | null }) => CrmSyncAdapter | null,
+  opportunityId: string,
+): Promise<CrmSyncAdapter | null> {
+  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef }).from(consultant)
+    .innerJoin(opportunity, eq(opportunity.consultantId, consultant.id)).where(eq(opportunity.id, opportunityId)).limit(1);
+  return row ? pick(row) : null;
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getDb } from "@athena/db";
 import { batchReport, drainCrmLookups, enqueueResearch, importFile, parseCsv, PARSERS, scoreCandidates } from "@athena/core";
-import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
 
 const IMPORT_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
@@ -66,7 +66,7 @@ export async function runImport(formData: FormData): Promise<ImportActionResult>
   // list already carries CRM history; bigger ones finish on the cron.
   let enriched = 0;
   if (rows.length <= 150 && GhlCrmAdapter.readConfigured()) {
-    const r = await drainCrmLookups(db, new GhlCrmAdapter(), { orgId: me.org_id, limit: rows.length });
+    const r = await drainCrmLookups(db, new GhlAgencyReader(), { orgId: me.org_id, limit: rows.length });
     enriched = r.enriched;
   }
   let scored = 0;

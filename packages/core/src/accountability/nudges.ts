@@ -22,9 +22,12 @@ export interface TickSummary {
  * Subjects: assignments awaiting first touch (clock from offered_at) and
  * appointments that have ended without a disposition (clock from ends_at).
  */
+/** A fixed provider, or one chosen per consultant (e.g. their own CRM sub-account). */
+export type SmsResolver = SmsProvider | null | ((consultant: { id: string; ghlRef: string | null }) => SmsProvider | null);
+
 export async function runAccountabilityTick(
   db: EmitTx,
-  sms: SmsProvider | null,
+  sms: SmsResolver,
   args: { orgId?: string; managerPhone?: string | null; now?: Date },
 ): Promise<TickSummary> {
   const now = args.now ?? new Date();
@@ -91,12 +94,13 @@ async function createNudge(
 
 async function sendNudge(
   db: EmitTx,
-  sms: SmsProvider | null,
+  smsResolver: SmsResolver,
   n: typeof consultantNudge.$inferSelect,
   opts: { managerPhone: string | null; now: Date },
 ): Promise<boolean> {
   const [cons] = await db.select().from(consultantTable).where(eq(consultantTable.id, n.consultantId)).limit(1);
   if (!cons) return false;
+  const sms = typeof smsResolver === "function" ? smsResolver({ id: cons.id, ghlRef: cons.ghlRef }) : smsResolver;
   const subject: NudgeSubject = n.assignmentId ? "first_touch" : "disposition";
   let candidateName = "the candidate";
   let anchor = n.dueAt;

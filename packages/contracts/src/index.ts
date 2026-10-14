@@ -146,6 +146,8 @@ export interface CrmContactHistory {
   }[];
   appointments: { ref: string; title: string | null; startsAt: Date; endsAt: Date | null; status: string | null }[];
   notes: { ref: string; body: string; createdAt: Date | null }[];
+  /** CRM sub-accounts (locations) this person was found in, when the CRM is split per consultant. */
+  locations?: { id: string; name: string | null }[];
 }
 
 export interface CrmReader {

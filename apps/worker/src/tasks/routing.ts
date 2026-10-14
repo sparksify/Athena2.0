@@ -16,7 +16,7 @@ export const routingDrain = task({
     const summary = await drainRoutingJobs(db, {
       llm: new LlmGateway(new AnthropicProvider(), db),
       email: GmailProvider.configured() ? new GmailProvider() : null,
-      crm: GhlCrmAdapter.configured() ? new GhlCrmAdapter() : null,
+      crm: GhlCrmAdapter.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!) : null) : null,
       appUrl: appUrl(),
     }, { limit: payload.limit ?? 50 });
     createLogger().info("routing.drain", { ...summary });
@@ -30,7 +30,7 @@ export const accountabilityTick = schedules.task({
   cron: "*/5 * * * *",
   run: async () => {
     const db = getDb();
-    const summary = await runAccountabilityTick(db, GhlSmsProvider.configured() ? new GhlSmsProvider() : null, {
+    const summary = await runAccountabilityTick(db, GhlSmsProvider.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!) : null) : null, {
       managerPhone: process.env.MANAGER_SMS_TO ?? null,
     });
     createLogger().info("accountability.tick", { ...summary });

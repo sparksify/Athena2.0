@@ -22,8 +22,44 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
+  /** The mirror needs the key and a pipeline; the location comes per consultant (or GHL_LOCATION_ID as the default). */
   static configured(): boolean {
-    return Boolean(process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
+    return Boolean(process.env.GHL_API_KEY && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
+  }
+
+  /** Same credentials, a different sub-account. */
+  forLocation(locationId: string): GhlCrmAdapter {
+    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl);
+  }
+
+  /**
+   * Every sub-account the agency token can see. Needs GHL_COMPANY_ID (the
+   * agency id) unless GHL_LOCATION_IDS lists them explicitly.
+   */
+  static async listLocations(opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<{ id: string; name: string | null }[]> {
+    const apiKey = opts.apiKey ?? process.env.GHL_API_KEY;
+    const companyId = opts.companyId ?? process.env.GHL_COMPANY_ID;
+    const explicit = (process.env.GHL_LOCATION_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (explicit.length && !companyId) return explicit.map((id) => ({ id, name: null }));
+    if (!apiKey || !companyId) {
+      const one = process.env.GHL_LOCATION_ID;
+      return one ? [{ id: one, name: null }] : [];
+    }
+    const f = opts.fetchImpl ?? fetch;
+    const out: { id: string; name: string | null }[] = [];
+    let skip = 0;
+    for (;;) {
+      const res = await f(`${API}/locations/search?companyId=${encodeURIComponent(companyId)}&limit=100&skip=${skip}`, {
+        headers: { authorization: `Bearer ${apiKey}`, version: VERSION, accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`ghl locations failed: ${res.status} ${await res.text()}`);
+      const json = (await res.json()) as { locations?: { id: string; name?: string }[] };
+      const page = json.locations ?? [];
+      out.push(...page.map((l) => ({ id: String(l.id), name: l.name ?? null })));
+      if (page.length < 100) break;
+      skip += 100;
+    }
+    return explicit.length ? out.filter((l) => explicit.includes(l.id)) : out;
   }
 
   async upsertOpportunity(input: { externalContactRef?: string; name: string; stage: string; email?: string; phone?: string }): Promise<{ externalRef: string }> {
@@ -80,9 +116,9 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
 
   // ---------------------------------------------------------------- read side (CrmReader)
 
-  /** Reading only needs the key and location; the pipeline is for the mirror. */
+  /** Reading needs the key and at least one way to find sub-accounts. */
   static readConfigured(): boolean {
-    return Boolean(process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID);
+    return Boolean(process.env.GHL_API_KEY && (process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS || process.env.GHL_LOCATION_ID));
   }
 
   /**
@@ -127,6 +163,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
       if (k) customFields[String(k)] = f.value;
     }
     return {
+      locations: [{ id: this.locationId!, name: null }],
       contactRef: id,
       tags: ((contact.tags ?? []) as unknown[]).map(String),
       dnd: Boolean(contact.dnd) || Object.values((contact.dndSettings ?? {}) as Record<string, { status?: string }>).some((s) => s?.status === "active"),
@@ -159,7 +196,10 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     if (!res.ok) throw new Error(`ghl contact search failed: ${res.status} ${await res.text()}`);
     const json = (await res.json()) as { contacts?: Record<string, unknown>[] };
     const hits = json.contacts ?? [];
-    return hits.find((c) => field === "email" ? String(c.email ?? "").toLowerCase() === v.toLowerCase() : true) ?? hits[0] ?? null;
+    // An email hit must match exactly; never fall back to "whatever the search returned".
+    if (field === "email") return hits.find((c) => String(c.email ?? "").toLowerCase() === v.toLowerCase()) ?? null;
+    const digits = v.replace(/\D/g, "").slice(-10);
+    return hits.find((c) => String(c.phone ?? "").replace(/\D/g, "").endsWith(digits)) ?? null;
   }
   private async opportunitiesFor(contactId: string) {
     const res = await this.fetchImpl(`${API}/opportunities/search?location_id=${encodeURIComponent(this.locationId!)}&contact_id=${encodeURIComponent(contactId)}&limit=50`, { headers: this.headers() });
@@ -230,3 +270,75 @@ export function parseGhlStageWebhook(payload: unknown): { externalRef: string; s
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+
+/**
+ * One CrmReader over every sub-account. FCC runs a sub-account per
+ * consultant, so a lead can live in any of them (or several): the lookup
+ * fans out and merges. DND anywhere counts; opportunities and messages are
+ * kept from every account, tagged with the account name.
+ */
+export class GhlAgencyReader implements CrmReader {
+  readonly name = "ghl";
+  private locations: { id: string; name: string | null }[] | null = null;
+
+  constructor(
+    private readonly apiKey = process.env.GHL_API_KEY,
+    private readonly companyId = process.env.GHL_COMPANY_ID,
+    private readonly fetchImpl: typeof fetch = fetch,
+    preset?: { id: string; name: string | null }[],
+  ) {
+    if (preset) this.locations = preset;
+  }
+
+  async listLocations() {
+    if (!this.locations) this.locations = await GhlCrmAdapter.listLocations({ apiKey: this.apiKey, companyId: this.companyId, fetchImpl: this.fetchImpl });
+    return this.locations;
+  }
+
+  async lookupContact(query: { email?: string | null; phone?: string | null }): Promise<CrmContactHistory | null> {
+    const locations = await this.listLocations();
+    if (!locations.length) throw new Error("GHL: no sub-accounts configured (set GHL_COMPANY_ID, GHL_LOCATION_IDS or GHL_LOCATION_ID)");
+    const found: { loc: { id: string; name: string | null }; h: CrmContactHistory }[] = [];
+    for (const loc of locations) {
+      try {
+        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl).lookupContact(query);
+        if (h) found.push({ loc, h });
+      } catch (err) {
+        // one broken sub-account must not hide the others
+        console.warn(`[ghl] lookup failed in ${loc.name ?? loc.id}: ${String(err)}`);
+      }
+    }
+    if (!found.length) return null;
+    return mergeHistories(found.map((f) => ({ ...f.h, locations: [{ id: f.loc.id, name: f.loc.name }] })));
+  }
+}
+
+/** Pure merge of per-sub-account histories into one record. Exported for tests. */
+export function mergeHistories(parts: CrmContactHistory[]): CrmContactHistory {
+  const byRecency = [...parts].sort((a, b) => (latest(b) ?? 0) - (latest(a) ?? 0));
+  const primary = byRecency[0]!;
+  const tagLoc = (locName: string | null, s: string | null) => (locName && s ? `${s} (${locName})` : s);
+  return {
+    contactRef: parts.map((p) => p.contactRef).join(","),
+    tags: [...new Set(parts.flatMap((p) => p.tags))],
+    dnd: parts.some((p) => p.dnd),
+    source: primary.source ?? parts.find((p) => p.source)?.source ?? null,
+    addedAt: parts.map((p) => p.addedAt).filter((d): d is Date => d != null).sort((a, b) => a.getTime() - b.getTime())[0] ?? null,
+    assignedTo: primary.assignedTo ?? parts.find((p) => p.assignedTo)?.assignedTo ?? null,
+    customFields: Object.assign({}, ...parts.map((p) => p.customFields)),
+    opportunities: parts.flatMap((p) => p.opportunities.map((o) => ({ ...o, pipeline: tagLoc(p.locations?.[0]?.name ?? null, o.pipeline) }))),
+    messages: dedupe(parts.flatMap((p) => p.messages), (m) => m.ref).sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime()),
+    appointments: dedupe(parts.flatMap((p) => p.appointments), (a) => a.ref),
+    notes: dedupe(parts.flatMap((p) => p.notes), (n) => n.ref),
+    locations: parts.flatMap((p) => p.locations ?? []),
+  };
+}
+const latest = (h: CrmContactHistory): number | null => {
+  const ts = [...h.messages.map((m) => m.occurredAt.getTime()), ...h.opportunities.map((o) => o.updatedAt?.getTime() ?? 0)];
+  return ts.length ? Math.max(...ts) : null;
+};
+const dedupe = <T>(xs: T[], key: (x: T) => string): T[] => {
+  const seen = new Set<string>();
+  return xs.filter((x) => (seen.has(key(x)) ? false : (seen.add(key(x)), true)));
+};

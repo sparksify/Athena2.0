@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@athena/db";
 import { drainCrmLookups, drainResearch, enqueueResearch, LlmGateway } from "@athena/core";
-import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { AnthropicProvider } from "@athena/llm-anthropic";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   }
   if (!process.env.DATABASE_URL) return NextResponse.json({ skipped: "DATABASE_URL not configured" });
   const db = getDb();
-  const crm = GhlCrmAdapter.readConfigured() ? await drainCrmLookups(db, new GhlCrmAdapter(), { limit: 150 }) : { skipped: "GHL not configured" };
+  const crm = GhlCrmAdapter.readConfigured() ? await drainCrmLookups(db, new GhlAgencyReader(), { limit: 150 }) : { skipped: "GHL not configured" };
   let research: unknown = { skipped: "ANTHROPIC_API_KEY not configured" };
   if (process.env.ANTHROPIC_API_KEY) {
     const orgs = await db.execute(`select distinct org_id from candidate where current_score is not null`);

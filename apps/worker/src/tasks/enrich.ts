@@ -2,7 +2,7 @@ import { schedules } from "@trigger.dev/sdk";
 import { sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
 import { createLogger, drainCrmLookups, drainResearch, enqueueResearch, LlmGateway } from "@athena/core";
-import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { AnthropicProvider } from "@athena/llm-anthropic";
 
 /** CRM history lookups and research notes, every 10 minutes. */
@@ -12,7 +12,7 @@ export const enrichTick = schedules.task({
   run: async () => {
     const db = getDb();
     const log = createLogger();
-    const crm = GhlCrmAdapter.readConfigured() ? await drainCrmLookups(db, new GhlCrmAdapter(), { limit: 300 }) : null;
+    const crm = GhlCrmAdapter.readConfigured() ? await drainCrmLookups(db, new GhlAgencyReader(), { limit: 300 }) : null;
     let research = null;
     if (process.env.ANTHROPIC_API_KEY) {
       const orgs = await db.execute(sql`select distinct org_id from candidate where current_score is not null`);
