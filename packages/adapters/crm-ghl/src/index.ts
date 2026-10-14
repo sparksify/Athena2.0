@@ -114,6 +114,13 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return found;
   }
 
+  /** Health check for one sub-account: does the configured pipeline exist there, and what else is available. */
+  async checkPipeline(): Promise<{ matched: string | null; available: string[] }> {
+    const all = await this.allPipelines();
+    const found = all.find((p) => p.id === this.pipelineRef || norm(p.name) === norm(this.pipelineRef ?? ""));
+    return { matched: found?.name ?? null, available: all.map((p) => p.name) };
+  }
+
   // ---------------------------------------------------------------- read side (CrmReader)
 
   /** Reading needs the key and at least one way to find sub-accounts. */

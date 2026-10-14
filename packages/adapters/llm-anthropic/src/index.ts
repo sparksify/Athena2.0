@@ -24,6 +24,14 @@ export class AnthropicProvider implements LlmProvider {
     });
   }
 
+  /** Cheapest authenticated call: lists one model. No tokens, no cost. */
+  async ping(): Promise<{ model: string }> {
+    const page = await this.client.models.list({ limit: 1 });
+    const first = page.data[0];
+    if (!first) throw new Error("Anthropic returned no models");
+    return { model: first.id };
+  }
+
   async complete(req: LlmRequest): Promise<LlmResponse> {
     const response = await this.client.messages.create({
       model: req.model,

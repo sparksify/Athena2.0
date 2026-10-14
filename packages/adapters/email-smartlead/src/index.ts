@@ -27,6 +27,18 @@ export class SmartleadProvider implements EmailProvider {
     if (!this.campaignId) throw new Error("SMARTLEAD_API_CAMPAIGN_ID is not set");
   }
 
+  /** Read-only health check: the API campaign and the sending accounts attached to it. */
+  async describeCampaign(): Promise<{ name: string | null; status: string | null; emailAccounts: number }> {
+    const [c, a] = await Promise.all([
+      fetch(`${this.baseUrl}/campaigns/${this.campaignId}?api_key=${this.apiKey}`),
+      fetch(`${this.baseUrl}/campaigns/${this.campaignId}/email-accounts?api_key=${this.apiKey}`),
+    ]);
+    if (!c.ok) throw new Error(`smartlead campaign lookup failed: ${c.status} ${await c.text().catch(() => "")}`);
+    const campaign = (await c.json()) as { name?: string; status?: string };
+    const accounts = a.ok ? ((await a.json()) as unknown[]) : [];
+    return { name: campaign.name ?? null, status: campaign.status ?? null, emailAccounts: Array.isArray(accounts) ? accounts.length : 0 };
+  }
+
   async sendEmail(email: OutboundEmail): Promise<{ providerMessageId: string }> {
     const res = await fetch(
       `${this.baseUrl}/campaigns/${this.campaignId}/leads?api_key=${this.apiKey}`,

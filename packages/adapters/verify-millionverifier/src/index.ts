@@ -21,6 +21,17 @@ export class MillionVerifierProvider implements EmailVerifier {
     if (!this.apiKey) throw new Error("MILLIONVERIFIER_API_KEY is not set");
   }
 
+  /** Remaining credits; free to call. */
+  async credits(): Promise<number> {
+    const url = new URL("/api/credits", this.baseUrl);
+    url.searchParams.set("api", this.apiKey!);
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(`millionverifier http ${res.status}`);
+    const raw = (await res.json()) as { credits?: number; error?: string };
+    if (raw.error) throw new Error(`millionverifier: ${raw.error}`);
+    return Number(raw.credits ?? 0);
+  }
+
   async verify(email: string): Promise<{ result: EmailVerificationResult; raw: unknown }> {
     const url = new URL("/api/v3/", this.baseUrl);
     url.searchParams.set("api", this.apiKey!);

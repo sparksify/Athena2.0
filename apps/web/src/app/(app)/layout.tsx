@@ -59,7 +59,14 @@ const NAV: {
     ],
   },
   { label: "Analytics", icon: "M4 20V10m6 10V4m6 16v-7m4 7H2" }, // Phase 9
-  { label: "Agent Ops", href: "/ops/jobs", icon: "M4 5h16v11H4zM8 8l3 2.5L8 13m5 0h3M9 20h6m-3-4v4" },
+  {
+    label: "Agent Ops",
+    icon: "M4 5h16v11H4zM8 8l3 2.5L8 13m5 0h3M9 20h6m-3-4v4",
+    children: [
+      { label: "Agent jobs", href: "/ops/jobs" },
+      { label: "Connections", href: "/ops/connections" },
+    ],
+  },
   { label: "Settings", icon: "M12 15a3 3 0 100-6 3 3 0 000 6zm8-3l1.5-1-1-2.6-1.8.3a7 7 0 00-1.7-1.7l.3-1.8L14.6 4 13.6 5.5a7 7 0 00-3.2 0L9.4 4 6.8 5.2l.3 1.8A7 7 0 005.4 8.7l-1.8-.3-1 2.6L4 12l-1.4 1 1 2.6 1.8-.3a7 7 0 001.7 1.7l-.3 1.8 2.6 1.2 1-1.5a7 7 0 003.2 0l1 1.5 2.6-1.2-.3-1.8a7 7 0 001.7-1.7l1.8.3 1-2.6z" },
 ];
 
