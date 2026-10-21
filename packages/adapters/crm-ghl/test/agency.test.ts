@@ -110,8 +110,10 @@ describe("one CRM reader over every consultant sub-account", () => {
   });
 
   it("installs as an agency app and mints sub-account tokens with the agency OAuth token", async () => {
-    const u = new URL(ghlAuthorizeUrl({ clientId: "cid", redirectUri: "https://x/cb", state: "s1" }));
+    const u = new URL(ghlAuthorizeUrl({ clientId: "6ad8c70276e05f9924b466c1-mvi73inl", redirectUri: "https://x/cb", state: "s1" }));
+    expect(u.pathname).toBe("/v2/oauth/chooselocation");
     expect(u.searchParams.get("scope")).toContain("oauth.write");
+    expect(u.searchParams.get("version_id")).toBe("6ad8c70276e05f9924b466c1");
     expect(u.searchParams.get("state")).toBe("s1");
 
     const seen: Record<string, string>[] = [];

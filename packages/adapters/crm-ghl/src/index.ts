@@ -55,25 +55,37 @@ export async function locationBearer(opts: { apiKey?: string | null; agencyToken
  */
 // ---------------------------------------------------------------- marketplace app (OAuth 2.0)
 
-/** Scopes the Athena marketplace app asks for. oauth.write is what lets an agency token mint sub-account tokens. */
+/**
+ * Scopes the Athena marketplace app asks for. Must match what is ticked on
+ * the app in GHL's developer portal exactly (GHL refuses an install that
+ * asks for a scope the app lacks). oauth.write is what lets an agency token
+ * mint sub-account tokens. GHL_APP_SCOPES (space-separated) overrides.
+ */
 export const GHL_APP_SCOPES = [
-  "companies.readonly", "locations.readonly", "users.readonly",
+  "locations.readonly", "users.readonly", "users.write",
   "contacts.readonly", "contacts.write",
   "conversations.readonly", "conversations/message.readonly", "conversations/message.write",
   "opportunities.readonly", "opportunities.write",
-  "calendars/events.readonly",
+  "calendars.readonly",
   "oauth.readonly", "oauth.write",
 ] as const;
 
 export interface GhlOAuthTokens { accessToken: string; refreshToken: string | null; expiresIn: number; scope: string | null; companyId: string | null; locationId: string | null; userType: string | null }
 
-/** Where the installer is sent; GHL asks which agency to install on, then redirects back with ?code=. */
+/**
+ * Where the installer is sent; GHL asks which agency to install on, then
+ * redirects back with ?code=. Mirrors the install link GHL generates for
+ * the app: the v2 chooser plus version_id, which is the app id (the part of
+ * the client id before the dash).
+ */
 export function ghlAuthorizeUrl(opts: { clientId: string; redirectUri: string; state: string; scopes?: readonly string[] }): string {
-  const u = new URL("https://marketplace.gohighlevel.com/oauth/chooselocation");
+  const scopes = opts.scopes ?? (process.env.GHL_APP_SCOPES?.trim() ? process.env.GHL_APP_SCOPES.trim().split(/\s+/) : GHL_APP_SCOPES);
+  const u = new URL("https://marketplace.gohighlevel.com/v2/oauth/chooselocation");
   u.searchParams.set("response_type", "code");
   u.searchParams.set("redirect_uri", opts.redirectUri);
   u.searchParams.set("client_id", opts.clientId);
-  u.searchParams.set("scope", (opts.scopes ?? GHL_APP_SCOPES).join(" "));
+  u.searchParams.set("scope", scopes.join(" "));
+  u.searchParams.set("version_id", opts.clientId.split("-")[0]!);
   u.searchParams.set("state", opts.state);
   return u.toString();
 }
