@@ -11,6 +11,7 @@ import {
 } from "@athena/core";
 import { GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
+import { ghlAgency } from "@/lib/ghl";
 
 const MANAGER_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
 const WORK_ROLES = new Set([...MANAGER_ROLES, "consultant"]);
@@ -136,8 +137,10 @@ export async function addConsultantFromSubAccount(locationId: string): Promise<A
   const who = await actor(MANAGER_ROLES);
   if ("error" in who) return { ok: false, error: who.error };
   if (!locationId) return { ok: false, error: "Pick a sub-account." };
-  const listed = (await GhlCrmAdapter.listLocations({ scope: [] })).find((l) => l.id === locationId);
-  const details = await GhlCrmAdapter.getLocation(locationId).catch(() => null);
+  const agency = await ghlAgency(who.orgId);
+  const ghl = { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined };
+  const listed = (await GhlCrmAdapter.listLocations({ ...ghl, scope: [] })).find((l) => l.id === locationId);
+  const details = await GhlCrmAdapter.getLocation(locationId, ghl).catch(() => null);
   const name = (details?.name ?? listed?.name ?? "").trim();
   if (!name) return { ok: false, error: "That sub-account has no name in GHL." };
   const db = getDb();
@@ -233,11 +236,13 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
 export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: string[]; filled?: string[]; unmatchedConsultants?: string[]; unmatchedLocations?: string[] }> {
   const who = await actor(MANAGER_ROLES);
   if ("error" in who) return { ok: false, error: who.error };
-  if (!process.env.GHL_API_KEY || !(process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS)) {
-    return { ok: false, error: "Set GHL_API_KEY (agency token) and GHL_COMPANY_ID (agency id) first." };
+  const agency = await ghlAgency(who.orgId);
+  const ghl = { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined };
+  if (!agency && (!process.env.GHL_API_KEY || !(process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS))) {
+    return { ok: false, error: "Connect the GoHighLevel app (Connections page) or set GHL_API_KEY and GHL_COMPANY_ID first." };
   }
   let locations: { id: string; name: string | null }[];
-  try { locations = await GhlCrmAdapter.listLocations(); } catch (err) { return { ok: false, error: String(err) }; }
+  try { locations = await GhlCrmAdapter.listLocations(ghl); } catch (err) { return { ok: false, error: String(err) }; }
   const norm = (x: string) => x.toLowerCase().replace(/[^a-z]/g, "");
   const db = getDb();
   const rows = await db.select({ id: consultant.id, name: consultant.name, ghlRef: consultant.ghlRef }).from(consultant).where(eq(consultant.orgId, who.orgId));
@@ -260,7 +265,7 @@ export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: s
     .from(consultant).where(eq(consultant.orgId, who.orgId));
   for (const c of linked) {
     if (!c.ghlRef || (c.email && c.phone)) continue;
-    const d = await GhlCrmAdapter.getLocation(c.ghlRef).catch(() => null);
+    const d = await GhlCrmAdapter.getLocation(c.ghlRef, ghl).catch(() => null);
     if (!d) continue;
     const patch: { email?: string; phone?: string; timezone?: string } = {};
     if (!c.email && d.email) patch.email = d.email;

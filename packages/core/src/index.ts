@@ -73,3 +73,4 @@ export {
   researchCandidate, enqueueResearch, drainResearch, researchSpentToday,
   RESEARCH_JOB_TYPE, RESEARCH_MODEL, RESEARCH_MIN_SCORE, RESEARCH_DAILY_BUDGET_USD, type ResearchResult,
 } from "./intelligence/research";
+export { saveGhlCredential, ghlAgencyAccess, forgetGhlCredential, GHL_PROVIDER, type GhlAgencyAccess, type GhlRefresher, type GhlRefreshed } from "./integrations/ghl-oauth";

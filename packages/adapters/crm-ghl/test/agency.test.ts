@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CrmContactHistory } from "@athena/contracts";
-import { GhlAgencyReader, GhlCrmAdapter, mergeHistories } from "../src/index";
+import { GhlAgencyReader, GhlCrmAdapter, exchangeGhlCode, ghlAuthorizeUrl, mergeHistories } from "../src/index";
 
 const D = (s: string) => new Date(s);
 const base = (over: Partial<CrmContactHistory>): CrmContactHistory => ({
@@ -107,5 +107,35 @@ describe("one CRM reader over every consultant sub-account", () => {
       await new GhlAgencyReader("agency-key", "agency", fetchImpl, [{ id: "L1", name: "Rob" }]).lookupContact({ email: "x@example.com" });
     } finally { delete process.env.GHL_LOCATION_TOKENS; }
     expect(bearers).toEqual(["Bearer pit-one"]);
+  });
+
+  it("installs as an agency app and mints sub-account tokens with the agency OAuth token", async () => {
+    const u = new URL(ghlAuthorizeUrl({ clientId: "cid", redirectUri: "https://x/cb", state: "s1" }));
+    expect(u.searchParams.get("scope")).toContain("oauth.write");
+    expect(u.searchParams.get("state")).toBe("s1");
+
+    const seen: Record<string, string>[] = [];
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url);
+      const auth = String((init?.headers as Record<string, string> | undefined)?.authorization ?? "");
+      if (u.endsWith("/oauth/token")) {
+        seen.push(Object.fromEntries(new URLSearchParams(String(init?.body))));
+        return Response.json({ access_token: "agency-oauth", refresh_token: "r1", expires_in: 86399, scope: "oauth.write contacts.readonly", userType: "Company", companyId: "C1" });
+      }
+      if (u.endsWith("/oauth/locationToken")) {
+        expect(auth).toBe("Bearer agency-oauth");
+        return Response.json({ access_token: "loc-L1", expires_in: 86400 });
+      }
+      expect(auth).toBe("Bearer loc-L1");
+      return Response.json({ contacts: [] });
+    }) as typeof fetch;
+    const t = await exchangeGhlCode({ clientId: "cid", clientSecret: "sec", code: "abc", redirectUri: "https://x/cb", fetchImpl });
+    expect(t.companyId).toBe("C1");
+    expect(seen[0]).toMatchObject({ grant_type: "authorization_code", user_type: "Company", code: "abc" });
+    const reader = await GhlAgencyReader.scoped(["L1"], { agencyToken: t.accessToken, companyId: "C1", apiKey: null, fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).includes("/locations/search")) return Response.json({ locations: [{ id: "L1", name: "Rob" }] });
+      return fetchImpl(url, init);
+    }) as typeof fetch });
+    expect(await reader.lookupContact({ email: "a@example.com" })).toBeNull();
   });
 });

@@ -3,7 +3,8 @@ import { getDb } from "@athena/db";
 import { crmLookupScope } from "@athena/core";
 import { supabaseServer } from "@/lib/supabase/server";
 import { AnthropicProvider } from "@athena/llm-anthropic";
-import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
+import { GhlAgencyReader, GhlCrmAdapter, type GhlAgency } from "@athena/crm-ghl";
+import { ghlAgency, ghlAppConfigured } from "@/lib/ghl";
 import { SmartleadProvider } from "@athena/email-smartlead";
 import { MillionVerifierProvider } from "@athena/verify-millionverifier";
 import { GmailProvider } from "@athena/email-gmail";
@@ -19,7 +20,7 @@ export const metadata = { title: "Connections — Athena" };
  */
 
 type Status = "ok" | "warn" | "fail" | "off";
-interface Check { name: string; status: Status; detail: string; next?: string }
+interface Check { name: string; status: Status; detail: string; next?: string; action?: { href: string; label: string } }
 
 const rows = <T,>(r: unknown): T[] => (Array.isArray(r) ? (r as T[]) : ((r as { rows?: T[] }).rows ?? []));
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
@@ -56,11 +57,29 @@ async function checkAnthropic(): Promise<Check> {
 
 async function checkGhl(orgId?: string): Promise<Check[]> {
   const out: Check[] = [];
-  if (!process.env.GHL_API_KEY) return [{ name: "GoHighLevel", status: "fail", detail: "GHL_API_KEY is not set" }];
+  const connect = { href: "/api/ghl/oauth/start", label: "Connect GoHighLevel" };
+  let agency: GhlAgency | null = null;
+  if (!ghlAppConfigured()) {
+    out.push({ name: "GoHighLevel app", status: "off", detail: "GHL_CLIENT_ID / GHL_CLIENT_SECRET not set", next: "Register the Athena app in GHL's developer portal (see runbook), add the client id and secret, then connect." });
+  } else {
+    const a = orgId ? await ghlAgency(orgId).catch(() => null) : null;
+    if (a) {
+      agency = { agencyToken: a.agencyToken, companyId: a.companyId };
+      const hours = a.expiresAt ? Math.max(0, Math.round((a.expiresAt.getTime() - Date.now()) / 3_600_000)) : null;
+      const scopes = (a.scope ?? "").split(/\s+/).filter(Boolean);
+      const hasOauth = scopes.includes("oauth.write");
+      out.push({ name: "GoHighLevel app", status: hasOauth || !scopes.length ? "ok" : "warn",
+        detail: `installed on agency ${a.companyId ?? "?"} · token ${hours == null ? "no expiry" : `refreshes in ${hours}h`} · ${scopes.length} scopes${scopes.length && !hasOauth ? " (oauth.write missing)" : ""}`,
+        next: scopes.length && !hasOauth ? "Add the oauth.write scope to the app in GHL's developer portal and reconnect." : undefined, action: { href: connect.href, label: "Reconnect" } });
+    } else {
+      out.push({ name: "GoHighLevel app", status: "fail", detail: "app configured but not installed on the agency yet", next: "Click Connect, pick the FCC agency, allow all sub-accounts.", action: connect });
+    }
+  }
+  if (!process.env.GHL_API_KEY && !agency) return [...out, { name: "GoHighLevel", status: "fail", detail: "no GHL_API_KEY and the app is not connected" }];
   let locations: { id: string; name: string | null }[];
   try {
-    const scopeRefs = orgId && process.env.DATABASE_URL ? await crmLookupScope(getDb(), orgId).catch(() => [] as string[]) : [];
-    const reader = await withTimeout(GhlAgencyReader.scoped(scopeRefs));
+    const scopeRefs = orgId && process.env.DATABASE_URL ? await crmLookupScope(getDb(), orgId).catch(() => [] as { id: string; token: string | null }[]) : [];
+    const reader = await withTimeout(GhlAgencyReader.scoped(scopeRefs, { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }));
     locations = await reader.listLocations();
     const wide = reader.scope === "all" && reader.total > 25;
     out.push({ name: "GoHighLevel sub-accounts", status: reader.total ? (wide ? "warn" : "ok") : "warn",
@@ -86,9 +105,10 @@ async function checkGhl(orgId?: string): Promise<Check[]> {
   const ref = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME;
   if (!ref) out.push({ name: "GoHighLevel pipeline", status: "fail", detail: "GHL_PIPELINE_ID / GHL_PIPELINE_NAME not set" });
   else {
+    const tokenFor = new Map((await crmLookupScope(getDb(), orgId!).catch(() => [] as { id: string; token: string | null }[])).map((e) => [e.id, e.token]));
     const sample = locations.slice(0, 12);
     const results = await Promise.all(sample.map(async (l) => {
-      try { const c = await withTimeout(new GhlCrmAdapter().forLocation(l.id).checkPipeline()); return { l, ...c, error: null as string | null }; }
+      try { const c = await withTimeout(new GhlCrmAdapter({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }).forLocation(l.id, tokenFor.get(l.id) ?? null).checkPipeline()); return { l, ...c, error: null as string | null }; }
       catch (e) { return { l, matched: null, available: [] as string[], error: msg(e) }; }
     }));
     const hits = results.filter((r) => r.matched);
@@ -146,7 +166,8 @@ function envFlag(name: string, key: string, why: string, soft = false): Check {
   return { name, status: set ? "ok" : soft ? "off" : "warn", detail: set ? `${key} set` : `${key} not set`, next: set ? undefined : why };
 }
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({ searchParams }: { searchParams: Promise<{ ghl?: string; reason?: string }> }) {
+  const sp = await searchParams;
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: me } = user ? await supabase.from("user").select("role").eq("id", user.id).single() : { data: null };
@@ -179,6 +200,8 @@ export default async function ConnectionsPage() {
       <p className="mt-1 text-sm text-[#8B95A7]">
         Live checks against production credentials. {failing === 0 ? "Everything on the launch path answers." : `${failing} blocking.`} Reload to re-run.
       </p>
+      {sp.ghl === "connected" && <p className="mt-3 rounded-md border border-emerald-900/60 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">GoHighLevel app installed on the agency.</p>}
+      {sp.ghl === "error" && <p className="mt-3 rounded-md border border-red-900/60 bg-red-950/30 px-3 py-2 text-sm text-red-300">GoHighLevel install failed: {sp.reason ?? "unknown"}</p>}
       <table className="mt-6 w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-[#1E2635] text-left text-[#8B95A7]">
@@ -195,6 +218,7 @@ export default async function ConnectionsPage() {
               <td className="py-2 text-[#C3CCDB]">
                 <div>{c.detail}</div>
                 {c.next && c.status !== "ok" && <div className="mt-1 text-xs text-[#8B95A7]">→ {c.next}</div>}
+                {c.action && <a href={c.action.href} className="mt-1 inline-block rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-500">{c.action.label}</a>}
               </td>
             </tr>
           ))}

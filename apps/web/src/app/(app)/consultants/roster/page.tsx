@@ -3,6 +3,7 @@ import { getDb } from "@athena/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
 import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { ghlAgency } from "@/lib/ghl";
 import { AddFromSubAccountForm, ConsultantForm, DeleteButton, PersonaForm, StatusButton, SyncSubAccountsButton, TokenForm } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +40,9 @@ export default async function RosterPage() {
   ]);
 
   const onRoster = new Set(consultants.map((c) => c.ghl_ref).filter(Boolean));
-  const subAccounts = GhlCrmAdapter.readConfigured()
-    ? (await GhlCrmAdapter.listLocations({ scope: [] }).catch(() => [] as { id: string; name: string | null }[]))
+  const agency = await ghlAgency(orgId).catch(() => null);
+  const subAccounts = GhlCrmAdapter.readConfigured(agency)
+    ? (await GhlCrmAdapter.listLocations({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined, scope: [] }).catch(() => [] as { id: string; name: string | null }[]))
         .filter((l) => !onRoster.has(l.id))
         .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
     : [];
@@ -80,7 +82,7 @@ export default async function RosterPage() {
       <div className="mt-4 rounded-lg border border-[#1E2635] bg-[#121826] p-4">
         <div className="text-[13px] font-medium text-[#E7ECF3]">Add a consultant</div>
         <p className="mb-3 mt-1 text-[12px] text-[#8B95A7]">Every consultant is a GoHighLevel sub-account. Pick theirs and Athena fills in the name, email, phone and timezone, and routes nudge texts, the pipeline mirror and lead lookups to that account.</p>
-        {subAccounts.length ? <AddFromSubAccountForm options={subAccounts} /> : <p className="text-[12px] text-[#8B95A7]">{GhlCrmAdapter.readConfigured() ? "Every sub-account is already on the roster." : "Connect GoHighLevel (GHL_API_KEY + GHL_COMPANY_ID) to pick from sub-accounts."}</p>}
+        {subAccounts.length ? <AddFromSubAccountForm options={subAccounts} /> : <p className="text-[12px] text-[#8B95A7]">{GhlCrmAdapter.readConfigured(agency) ? "Every sub-account is already on the roster." : "Connect the GoHighLevel app on the Connections page to pick from sub-accounts."}</p>}
         <details className="mt-3">
           <summary className="cursor-pointer text-[12px] text-indigo-300">Add by hand instead</summary>
           <div className="mt-3"><ConsultantForm users={users} /></div>

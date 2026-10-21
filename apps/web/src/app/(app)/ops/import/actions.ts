@@ -5,6 +5,7 @@ import { getDb } from "@athena/db";
 import { batchReport, crmLookupScope, drainCrmLookups, enqueueResearch, importFile, parseCsv, PARSERS, scoreCandidates } from "@athena/core";
 import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
+import { ghlAgency } from "@/lib/ghl";
 
 const IMPORT_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
 const MAX_UPLOAD_ROWS = 20_000;
@@ -65,8 +66,9 @@ export async function runImport(formData: FormData): Promise<ImportActionResult>
   // Small batches get enriched and scored inline so the first look at the
   // list already carries CRM history; bigger ones finish on the cron.
   let enriched = 0;
-  if (rows.length <= 150 && GhlCrmAdapter.readConfigured()) {
-    const r = await drainCrmLookups(db, await GhlAgencyReader.scoped(await crmLookupScope(db, me.org_id)), { orgId: me.org_id, limit: rows.length });
+  const agency = await ghlAgency(me.org_id);
+  if (rows.length <= 150 && GhlCrmAdapter.readConfigured(agency)) {
+    const r = await drainCrmLookups(db, await GhlAgencyReader.scoped(await crmLookupScope(db, me.org_id), { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }), { orgId: me.org_id, limit: rows.length });
     enriched = r.enriched;
   }
   let scored = 0;

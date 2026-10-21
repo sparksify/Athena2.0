@@ -516,6 +516,25 @@ export const consultant = pgTable(
   (t) => [uniqueIndex("consultant_org_name_idx").on(t.orgId, t.name), index("consultant_user_idx2").on(t.userId)],
 );
 
+/** Service-connection only: OAuth credential for a vendor app installed on the org (first: the GHL marketplace app). */
+export const integrationCredential = pgTable(
+  "integration_credential",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id").notNull().references(() => org.id),
+    provider: text("provider").notNull(),
+    externalId: text("external_id"),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    installedBy: uuid("installed_by").references(() => appUser.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("integration_credential_org_provider_idx").on(t.orgId, t.provider)],
+);
+
 /** Service-connection only (no RLS policies, no grants): the consultant's own GHL sub-account token. */
 export const consultantSecret = pgTable("consultant_secret", {
   consultantId: uuid("consultant_id").primaryKey().references(() => consultant.id, { onDelete: "cascade" }),

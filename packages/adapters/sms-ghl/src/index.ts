@@ -1,5 +1,10 @@
 import type { SmsProvider } from "@athena/contracts";
-import { locationBearer } from "@athena/crm-ghl";
+import { locationBearer, type GhlAgency } from "@athena/crm-ghl";
+
+export interface GhlSmsOptions {
+  apiKey?: string | null; locationId?: string | null; fetchImpl?: typeof fetch;
+  companyId?: string | null; locationToken?: string | null; agencyToken?: string | null;
+}
 
 const API = "https://services.leadconnectorhq.com";
 const VERSION = "2021-07-28";
@@ -11,21 +16,29 @@ const VERSION = "2021-07-28";
  */
 export class GhlSmsProvider implements SmsProvider {
   readonly name = "ghl";
-  constructor(
-    private readonly apiKey = process.env.GHL_API_KEY,
-    private readonly locationId = process.env.GHL_LOCATION_ID,
-    private readonly fetchImpl: typeof fetch = fetch,
-    private readonly companyId = process.env.GHL_COMPANY_ID,
-    private readonly locationToken: string | null = null,
-  ) {}
+  private readonly apiKey: string | null;
+  private readonly locationId: string | null;
+  private readonly fetchImpl: typeof fetch;
+  private readonly companyId: string | null;
+  private readonly locationToken: string | null;
+  private readonly agencyToken: string | null;
 
-  /** Needs the key; the sub-account comes per consultant (GHL_LOCATION_ID is the default). */
-  static configured(): boolean {
-    return Boolean(process.env.GHL_API_KEY);
+  constructor(private readonly opts: GhlSmsOptions = {}) {
+    this.apiKey = opts.apiKey ?? process.env.GHL_API_KEY ?? null;
+    this.locationId = opts.locationId ?? process.env.GHL_LOCATION_ID ?? null;
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.companyId = opts.companyId ?? process.env.GHL_COMPANY_ID ?? null;
+    this.locationToken = opts.locationToken ?? null;
+    this.agencyToken = opts.agencyToken ?? null;
+  }
+
+  /** Needs a way in (API key or the installed app); the sub-account comes per consultant. */
+  static configured(agency?: GhlAgency | null): boolean {
+    return Boolean(process.env.GHL_API_KEY || agency);
   }
 
   forLocation(locationId: string, token: string | null = null): GhlSmsProvider {
-    return new GhlSmsProvider(this.apiKey, locationId, this.fetchImpl, this.companyId, token);
+    return new GhlSmsProvider({ ...this.opts, locationId, locationToken: token });
   }
 
   async sendSms(msg: { to: string; body: string }): Promise<{ providerMessageId: string }> {
@@ -54,7 +67,7 @@ export class GhlSmsProvider implements SmsProvider {
   }
 
   private async headers() {
-    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
+    const token = await locationBearer({ apiKey: this.apiKey, agencyToken: this.agencyToken, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
     return { authorization: `Bearer ${token}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
   }
 }

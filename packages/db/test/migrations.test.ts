@@ -56,6 +56,7 @@ describe("migrations", () => {
       "identifier",
       "identity_review",
       "import_batch",
+      "integration_credential",
       "interaction",
       "mailbox",
       "message",

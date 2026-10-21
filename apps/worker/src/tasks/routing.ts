@@ -5,6 +5,7 @@ import { GmailProvider } from "@athena/email-gmail";
 import { GhlCrmAdapter } from "@athena/crm-ghl";
 import { GhlSmsProvider } from "@athena/sms-ghl";
 import { AnthropicProvider } from "@athena/llm-anthropic";
+import { ghlAgency } from "../ghl";
 
 const appUrl = () => process.env.APP_URL ?? "https://athena2-0.vercel.app";
 
@@ -13,10 +14,12 @@ export const routingDrain = task({
   id: "routing.drain",
   run: async (payload: { limit?: number }) => {
     const db = getDb();
+    const agency = await ghlAgency();
+    const ghl = { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined };
     const summary = await drainRoutingJobs(db, {
       llm: new LlmGateway(new AnthropicProvider(), db),
       email: GmailProvider.configured() ? new GmailProvider() : null,
-      crm: GhlCrmAdapter.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null,
+      crm: GhlCrmAdapter.configured(agency) ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter(ghl).forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null,
       appUrl: appUrl(),
     }, { limit: payload.limit ?? 50 });
     createLogger().info("routing.drain", { ...summary });
@@ -30,7 +33,9 @@ export const accountabilityTick = schedules.task({
   cron: "*/5 * * * *",
   run: async () => {
     const db = getDb();
-    const summary = await runAccountabilityTick(db, GhlSmsProvider.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null, {
+    const agency = await ghlAgency();
+    const ghl = { agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined };
+    const summary = await runAccountabilityTick(db, GhlSmsProvider.configured(agency) ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider(ghl).forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null, {
       managerPhone: process.env.MANAGER_SMS_TO ?? null,
     });
     createLogger().info("accountability.tick", { ...summary });

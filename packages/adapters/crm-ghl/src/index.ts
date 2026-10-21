@@ -22,21 +22,25 @@ function presetLocationToken(locationId: string): string | null {
   return null;
 }
 
-export async function locationBearer(opts: { apiKey: string; companyId?: string; locationId: string; token?: string | null; fetchImpl?: typeof fetch }): Promise<string> {
+export async function locationBearer(opts: { apiKey?: string | null; agencyToken?: string | null; companyId?: string | null; locationId: string; token?: string | null; fetchImpl?: typeof fetch }): Promise<string> {
   if (opts.token) return opts.token;
   const preset = presetLocationToken(opts.locationId);
   if (preset) return preset;
-  if (!opts.companyId) return opts.apiKey;
+  const agency = opts.agencyToken ?? opts.apiKey;
+  if (!opts.companyId || !agency) {
+    if (opts.apiKey) return opts.apiKey;
+    throw new Error("GHL is not configured (no sub-account token, agency app or API key)");
+  }
   const key = `${opts.companyId}:${opts.locationId}`;
   const hit = locationTokens.get(key);
   if (hit && hit.expiresAt > Date.now() + 60_000) return hit.token;
   const f = opts.fetchImpl ?? fetch;
   const res = await f(`${API}/oauth/locationToken`, {
     method: "POST",
-    headers: { authorization: `Bearer ${opts.apiKey}`, version: VERSION, "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    headers: { authorization: `Bearer ${agency}`, version: VERSION, "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({ companyId: opts.companyId, locationId: opts.locationId }).toString(),
   });
-  if (!res.ok) throw new Error(`ghl location token for ${opts.locationId} failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 120)} — enable the OAuth scope on the agency integration, or set GHL_LOCATION_TOKENS`);
+  if (!res.ok) throw new Error(`ghl location token for ${opts.locationId} failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 120)} — connect the GoHighLevel app (Connections page), or paste a sub-account token on the roster`);
   const json = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!json.access_token) throw new Error("ghl location token response had no access_token");
   locationTokens.set(key, { token: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 86_400) * 1000 });
@@ -49,27 +53,91 @@ export async function locationBearer(opts: { apiKey: string; companyId?: string;
  * are matched by name inside the configured pipeline.
  * Env: GHL_API_KEY, GHL_LOCATION_ID, GHL_PIPELINE_ID (or GHL_PIPELINE_NAME).
  */
+// ---------------------------------------------------------------- marketplace app (OAuth 2.0)
+
+/** Scopes the Athena marketplace app asks for. oauth.write is what lets an agency token mint sub-account tokens. */
+export const GHL_APP_SCOPES = [
+  "companies.readonly", "locations.readonly", "users.readonly",
+  "contacts.readonly", "contacts.write",
+  "conversations.readonly", "conversations/message.readonly", "conversations/message.write",
+  "opportunities.readonly", "opportunities.write",
+  "calendars/events.readonly",
+  "oauth.readonly", "oauth.write",
+] as const;
+
+export interface GhlOAuthTokens { accessToken: string; refreshToken: string | null; expiresIn: number; scope: string | null; companyId: string | null; userType: string | null }
+
+/** Where the installer is sent; GHL asks which agency to install on, then redirects back with ?code=. */
+export function ghlAuthorizeUrl(opts: { clientId: string; redirectUri: string; state: string; scopes?: readonly string[] }): string {
+  const u = new URL("https://marketplace.gohighlevel.com/oauth/chooselocation");
+  u.searchParams.set("response_type", "code");
+  u.searchParams.set("redirect_uri", opts.redirectUri);
+  u.searchParams.set("client_id", opts.clientId);
+  u.searchParams.set("scope", (opts.scopes ?? GHL_APP_SCOPES).join(" "));
+  u.searchParams.set("state", opts.state);
+  return u.toString();
+}
+
+async function oauthToken(form: Record<string, string>, fetchImpl: typeof fetch = fetch): Promise<GhlOAuthTokens> {
+  const res = await fetchImpl(`${API}/oauth/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    body: new URLSearchParams(form).toString(),
+  });
+  if (!res.ok) throw new Error(`ghl oauth token failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  const j = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; companyId?: string; userType?: string };
+  if (!j.access_token) throw new Error("ghl oauth token response had no access_token");
+  return { accessToken: j.access_token, refreshToken: j.refresh_token ?? null, expiresIn: Number(j.expires_in ?? 86_399), scope: j.scope ?? null, companyId: j.companyId ?? null, userType: j.userType ?? null };
+}
+
+/** Authorization code → agency tokens (user_type Company). */
+export function exchangeGhlCode(opts: { clientId: string; clientSecret: string; code: string; redirectUri: string; fetchImpl?: typeof fetch }): Promise<GhlOAuthTokens> {
+  return oauthToken({ client_id: opts.clientId, client_secret: opts.clientSecret, grant_type: "authorization_code", code: opts.code, user_type: "Company", redirect_uri: opts.redirectUri }, opts.fetchImpl);
+}
+
+/** Refresh an agency access token (they last ~24h; refresh tokens a year). */
+export function refreshGhlAccess(opts: { clientId: string; clientSecret: string; refreshToken: string; fetchImpl?: typeof fetch }): Promise<GhlOAuthTokens> {
+  return oauthToken({ client_id: opts.clientId, client_secret: opts.clientSecret, grant_type: "refresh_token", refresh_token: opts.refreshToken, user_type: "Company" }, opts.fetchImpl);
+}
+
+/** The installed app's agency credential, as the callers hand it to the adapters. */
+export interface GhlAgency { agencyToken: string; companyId: string | null }
+
+export interface GhlCrmOptions {
+  apiKey?: string | null; locationId?: string | null; pipelineRef?: string | null; fetchImpl?: typeof fetch;
+  companyId?: string | null; locationToken?: string | null; agencyToken?: string | null;
+}
+
 export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   readonly name = "ghl";
   private pipeline: Pipeline | null = null;
 
-  constructor(
-    private readonly apiKey = process.env.GHL_API_KEY,
-    private readonly locationId = process.env.GHL_LOCATION_ID,
-    private readonly pipelineRef = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME,
-    private readonly fetchImpl: typeof fetch = fetch,
-    private readonly companyId = process.env.GHL_COMPANY_ID,
-    private readonly locationToken: string | null = null,
-  ) {}
+  private readonly apiKey: string | null;
+  private readonly locationId: string | null;
+  private readonly pipelineRef: string | null;
+  private readonly fetchImpl: typeof fetch;
+  private readonly companyId: string | null;
+  private readonly locationToken: string | null;
+  private readonly agencyToken: string | null;
 
-  /** The mirror needs the key and a pipeline; the location comes per consultant (or GHL_LOCATION_ID as the default). */
-  static configured(): boolean {
-    return Boolean(process.env.GHL_API_KEY && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
+  constructor(private readonly opts: GhlCrmOptions = {}) {
+    this.apiKey = opts.apiKey ?? process.env.GHL_API_KEY ?? null;
+    this.locationId = opts.locationId ?? process.env.GHL_LOCATION_ID ?? null;
+    this.pipelineRef = opts.pipelineRef ?? process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME ?? null;
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.companyId = opts.companyId ?? process.env.GHL_COMPANY_ID ?? null;
+    this.locationToken = opts.locationToken ?? null;
+    this.agencyToken = opts.agencyToken ?? null;
+  }
+
+  /** The mirror needs a way in (API key or the installed app) and a pipeline; the location comes per consultant. */
+  static configured(agency?: GhlAgency | null): boolean {
+    return Boolean((process.env.GHL_API_KEY || agency) && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
   }
 
   /** A different sub-account; `token` is that sub-account's own private-integration token when one is on file. */
   forLocation(locationId: string, token: string | null = null): GhlCrmAdapter {
-    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl, this.companyId, token);
+    return new GhlCrmAdapter({ ...this.opts, locationId, locationToken: token });
   }
 
   /**
@@ -78,12 +146,12 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
    * ids or names (case/punctuation-insensitive); it defaults to
    * GHL_LOCATION_IDS. An empty scope means every sub-account.
    */
-  static async listLocations(opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch; scope?: string[] } = {}): Promise<{ id: string; name: string | null }[]> {
-    const apiKey = opts.apiKey ?? process.env.GHL_API_KEY;
+  static async listLocations(opts: { apiKey?: string | null; agencyToken?: string | null; companyId?: string | null; fetchImpl?: typeof fetch; scope?: string[] } = {}): Promise<{ id: string; name: string | null }[]> {
+    const bearer = opts.agencyToken ?? opts.apiKey ?? process.env.GHL_API_KEY;
     const companyId = opts.companyId ?? process.env.GHL_COMPANY_ID;
     const explicit = (opts.scope ?? envScope()).filter(Boolean);
     if (explicit.length && !companyId) return explicit.map((id) => ({ id, name: null }));
-    if (!apiKey || !companyId) {
+    if (!bearer || !companyId) {
       const one = process.env.GHL_LOCATION_ID;
       return one ? [{ id: one, name: null }] : [];
     }
@@ -92,7 +160,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     let skip = 0;
     for (;;) {
       const res = await f(`${API}/locations/search?companyId=${encodeURIComponent(companyId)}&limit=100&skip=${skip}`, {
-        headers: { authorization: `Bearer ${apiKey}`, version: VERSION, accept: "application/json" },
+        headers: { authorization: `Bearer ${bearer}`, version: VERSION, accept: "application/json" },
       });
       if (!res.ok) throw new Error(`ghl locations failed: ${res.status} ${await res.text()}`);
       const json = (await res.json()) as { locations?: { id: string; name?: string }[] };
@@ -159,11 +227,11 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   }
 
   /** Contact details on a sub-account (owner email/phone/timezone), for roster prefill. Tolerant: null when GHL refuses. */
-  static async getLocation(locationId: string, opts: { apiKey?: string; fetchImpl?: typeof fetch } = {}): Promise<{ id: string; name: string | null; email: string | null; phone: string | null; timezone: string | null } | null> {
-    const apiKey = opts.apiKey ?? process.env.GHL_API_KEY;
-    if (!apiKey) return null;
+  static async getLocation(locationId: string, opts: { apiKey?: string | null; agencyToken?: string | null; fetchImpl?: typeof fetch } = {}): Promise<{ id: string; name: string | null; email: string | null; phone: string | null; timezone: string | null } | null> {
+    const bearer = opts.agencyToken ?? opts.apiKey ?? process.env.GHL_API_KEY;
+    if (!bearer) return null;
     const f = opts.fetchImpl ?? fetch;
-    const res = await f(`${API}/locations/${encodeURIComponent(locationId)}`, { headers: { authorization: `Bearer ${apiKey}`, version: VERSION, accept: "application/json" } });
+    const res = await f(`${API}/locations/${encodeURIComponent(locationId)}`, { headers: { authorization: `Bearer ${bearer}`, version: VERSION, accept: "application/json" } });
     if (!res.ok) return null;
     const l = ((await res.json()) as { location?: Record<string, unknown> }).location;
     if (!l) return null;
@@ -180,7 +248,8 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   // ---------------------------------------------------------------- read side (CrmReader)
 
   /** Reading needs the key and at least one way to find sub-accounts. */
-  static readConfigured(): boolean {
+  static readConfigured(agency?: GhlAgency | null): boolean {
+    if (agency) return true;
     return Boolean(process.env.GHL_API_KEY && (process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS || process.env.GHL_LOCATION_ID));
   }
 
@@ -303,7 +372,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   }
 
   private async headers() {
-    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
+    const token = await locationBearer({ apiKey: this.apiKey, agencyToken: this.agencyToken, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
     return { authorization: `Bearer ${token}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
   }
 }
@@ -351,10 +420,11 @@ export class GhlAgencyReader implements CrmReader {
   private locations: AgencyLocation[] | null = null;
 
   constructor(
-    private readonly apiKey = process.env.GHL_API_KEY,
-    private readonly companyId = process.env.GHL_COMPANY_ID,
+    private readonly apiKey: string | null | undefined = process.env.GHL_API_KEY,
+    private readonly companyId: string | null | undefined = process.env.GHL_COMPANY_ID,
     private readonly fetchImpl: typeof fetch = fetch,
     preset?: AgencyLocation[],
+    private readonly agencyToken: string | null = null,
   ) {
     if (preset) this.locations = preset;
   }
@@ -366,19 +436,19 @@ export class GhlAgencyReader implements CrmReader {
    * a lookup across all of them per candidate is not viable. When nothing in
    * the scope matches, every sub-account is used and `scope` says so.
    */
-  static async scoped(extra: (string | ScopeEntry)[] = [], opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<GhlAgencyReader & { scope: "scoped" | "all"; total: number }> {
+  static async scoped(extra: (string | ScopeEntry)[] = [], opts: { apiKey?: string | null; companyId?: string | null; agencyToken?: string | null; fetchImpl?: typeof fetch } = {}): Promise<GhlAgencyReader & { scope: "scoped" | "all"; total: number }> {
     const all = await GhlCrmAdapter.listLocations({ ...opts, scope: [] });
     const entries = extra.map((e) => (typeof e === "string" ? { id: e } : e));
     const tokens = new Map(entries.filter((e) => e.token).map((e) => [norm(e.id), e.token!]));
     const wanted = new Set([...envScope(), ...entries.map((e) => e.id)].map(norm));
     const withTokens = all.map((l) => ({ ...l, token: tokens.get(norm(l.id)) ?? null }));
     const picked = wanted.size ? withTokens.filter((l) => wanted.has(norm(l.id)) || (l.name != null && wanted.has(norm(l.name)))) : [];
-    const reader = new GhlAgencyReader(opts.apiKey, opts.companyId, opts.fetchImpl, picked.length ? picked : withTokens);
+    const reader = new GhlAgencyReader(opts.apiKey ?? process.env.GHL_API_KEY, opts.companyId ?? process.env.GHL_COMPANY_ID, opts.fetchImpl, picked.length ? picked : withTokens, opts.agencyToken ?? null);
     return Object.assign(reader, { scope: picked.length ? ("scoped" as const) : ("all" as const), total: all.length });
   }
 
   async listLocations() {
-    if (!this.locations) this.locations = await GhlCrmAdapter.listLocations({ apiKey: this.apiKey, companyId: this.companyId, fetchImpl: this.fetchImpl });
+    if (!this.locations) this.locations = await GhlCrmAdapter.listLocations({ apiKey: this.apiKey, agencyToken: this.agencyToken, companyId: this.companyId, fetchImpl: this.fetchImpl });
     return this.locations;
   }
 
@@ -388,7 +458,7 @@ export class GhlAgencyReader implements CrmReader {
     const found: { loc: AgencyLocation; h: CrmContactHistory }[] = [];
     for (const loc of locations) {
       try {
-        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl, this.companyId, loc.token ?? null).lookupContact(query);
+        const h = await new GhlCrmAdapter({ apiKey: this.apiKey, locationId: loc.id, fetchImpl: this.fetchImpl, companyId: this.companyId, locationToken: loc.token ?? null, agencyToken: this.agencyToken }).lookupContact(query);
         if (h) found.push({ loc, h });
       } catch (err) {
         // one broken sub-account must not hide the others
