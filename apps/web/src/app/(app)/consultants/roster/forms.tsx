@@ -77,7 +77,7 @@ export function SyncSubAccountsButton() {
         <div className="mt-2 space-y-1 text-xs text-[#C3CCDB]">
           <div>Matched: {out.matched?.length ? out.matched.join(" · ") : "none new"}</div>
           {out.unmatchedConsultants?.length ? <div className="text-amber-300">Still need an ID: {out.unmatchedConsultants.join(", ")}</div> : null}
-          {out.unmatchedLocations?.length ? <div className="text-[#8B95A7]">Sub-accounts not linked: {out.unmatchedLocations.join(" · ")}</div> : null}
+          {out.unmatchedLocations?.length ? <div className="text-[#8B95A7]">{out.unmatchedLocations.length} other sub-accounts in the agency are not consultants on this roster.</div> : null}
         </div>
       )}
     </div>

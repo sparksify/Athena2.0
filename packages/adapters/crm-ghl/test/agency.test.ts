@@ -71,4 +71,27 @@ describe("one CRM reader over every consultant sub-account", () => {
     expect(wide.scope).toBe("all");
     expect(wide.total).toBe(3);
   });
+
+  it("exchanges the agency token for a sub-account token and reuses it", async () => {
+    const bearers: string[] = [];
+    let exchanges = 0;
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url);
+      const auth = String((init?.headers as Record<string, string> | undefined)?.authorization ?? "");
+      if (u.endsWith("/oauth/locationToken")) {
+        exchanges++;
+        expect(auth).toBe("Bearer agency-key");
+        expect(String(init?.body)).toBe("companyId=agency&locationId=L1");
+        return Response.json({ access_token: "loc-token", expires_in: 86400 });
+      }
+      bearers.push(auth);
+      if (u.endsWith("/contacts/search")) return Response.json({ contacts: [] });
+      return Response.json({ pipelines: [] });
+    }) as typeof fetch;
+    const reader = new GhlAgencyReader("agency-key", "agency", fetchImpl, [{ id: "L1", name: "Rob Petka" }]);
+    await reader.lookupContact({ email: "a@example.com" });
+    await reader.lookupContact({ email: "b@example.com" });
+    expect(exchanges).toBe(1);
+    expect(bearers.every((b) => b === "Bearer loc-token")).toBe(true);
+  });
 });

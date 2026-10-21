@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@athena/contracts": "workspace:*"
+    "@athena/contracts": "workspace:*",
+    "@athena/crm-ghl": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

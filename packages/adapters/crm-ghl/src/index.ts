@@ -6,6 +6,31 @@ const VERSION = "2021-07-28";
 interface Pipeline { id: string; name: string; stages: { id: string; name: string }[] }
 
 /**
+ * Agency tokens cannot call sub-account endpoints directly; GHL hands out a
+ * short-lived location token per sub-account in exchange. Cached per
+ * process until a minute before expiry. Without GHL_COMPANY_ID the key is
+ * assumed to be a sub-account token and is used as-is.
+ */
+const locationTokens = new Map<string, { token: string; expiresAt: number }>();
+export async function locationBearer(opts: { apiKey: string; companyId?: string; locationId: string; fetchImpl?: typeof fetch }): Promise<string> {
+  if (!opts.companyId) return opts.apiKey;
+  const key = `${opts.companyId}:${opts.locationId}`;
+  const hit = locationTokens.get(key);
+  if (hit && hit.expiresAt > Date.now() + 60_000) return hit.token;
+  const f = opts.fetchImpl ?? fetch;
+  const res = await f(`${API}/oauth/locationToken`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${opts.apiKey}`, version: VERSION, "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    body: new URLSearchParams({ companyId: opts.companyId, locationId: opts.locationId }).toString(),
+  });
+  if (!res.ok) throw new Error(`ghl location token for ${opts.locationId} failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  const json = (await res.json()) as { access_token?: string; expires_in?: number };
+  if (!json.access_token) throw new Error("ghl location token response had no access_token");
+  locationTokens.set(key, { token: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 86_400) * 1000 });
+  return json.access_token;
+}
+
+/**
  * GoHighLevel opportunity mirror behind CrmSyncAdapter (ADR 0004: Athena
  * owns stages; GHL displays them). Stage names are the FCC vocabulary and
  * are matched by name inside the configured pipeline.
@@ -20,6 +45,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     private readonly locationId = process.env.GHL_LOCATION_ID,
     private readonly pipelineRef = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly companyId = process.env.GHL_COMPANY_ID,
   ) {}
 
   /** The mirror needs the key and a pipeline; the location comes per consultant (or GHL_LOCATION_ID as the default). */
@@ -29,7 +55,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
 
   /** Same credentials, a different sub-account. */
   forLocation(locationId: string): GhlCrmAdapter {
-    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl);
+    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl, this.companyId);
   }
 
   /**
@@ -74,14 +100,14 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
 
     if (input.externalContactRef) {
       const res = await this.fetchImpl(`${API}/opportunities/${input.externalContactRef}`, {
-        method: "PUT", headers: this.headers(), body: JSON.stringify({ pipelineStageId: stage.id, name: input.name }),
+        method: "PUT", headers: await this.headers(), body: JSON.stringify({ pipelineStageId: stage.id, name: input.name }),
       });
       if (!res.ok) throw new Error(`ghl opportunity update failed: ${res.status} ${await res.text()}`);
       return { externalRef: input.externalContactRef };
     }
     const contactId = await this.contactIdFor(input);
     const res = await this.fetchImpl(`${API}/opportunities/`, {
-      method: "POST", headers: this.headers(),
+      method: "POST", headers: await this.headers(),
       body: JSON.stringify({ pipelineId: pipeline.id, locationId: this.locationId, name: input.name, pipelineStageId: stage.id, status: "open", contactId }),
     });
     if (!res.ok) throw new Error(`ghl opportunity create failed: ${res.status} ${await res.text()}`);
@@ -98,7 +124,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   private async contactIdFor(input: { name: string; email?: string; phone?: string }): Promise<string> {
     const [firstName, ...rest] = input.name.split(" ");
     const res = await this.fetchImpl(`${API}/contacts/upsert`, {
-      method: "POST", headers: this.headers(),
+      method: "POST", headers: await this.headers(),
       body: JSON.stringify({ locationId: this.locationId, firstName, lastName: rest.join(" ") || undefined, email: input.email, phone: input.phone, source: "Athena" }),
     });
     if (!res.ok) throw new Error(`ghl contact upsert failed: ${res.status} ${await res.text()}`);
@@ -109,7 +135,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
 
   private async loadPipeline(): Promise<Pipeline> {
     if (this.pipeline) return this.pipeline;
-    const res = await this.fetchImpl(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(this.locationId!)}`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(this.locationId!)}`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl pipelines failed: ${res.status} ${await res.text()}`);
     const json = (await res.json()) as { pipelines?: Pipeline[] };
     const found = (json.pipelines ?? []).find((p) => p.id === this.pipelineRef || norm(p.name) === norm(this.pipelineRef ?? ""));
@@ -200,7 +226,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     const v = value?.trim();
     if (!v) return null;
     const res = await this.fetchImpl(`${API}/contacts/search`, {
-      method: "POST", headers: this.headers(),
+      method: "POST", headers: await this.headers(),
       body: JSON.stringify({ locationId: this.locationId, pageLimit: 5, filters: [{ field, operator: "eq", value: field === "email" ? v.toLowerCase() : v }] }),
     });
     if (res.status === 404) return null;
@@ -213,35 +239,35 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return hits.find((c) => String(c.phone ?? "").replace(/\D/g, "").endsWith(digits)) ?? null;
   }
   private async opportunitiesFor(contactId: string) {
-    const res = await this.fetchImpl(`${API}/opportunities/search?location_id=${encodeURIComponent(this.locationId!)}&contact_id=${encodeURIComponent(contactId)}&limit=50`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/opportunities/search?location_id=${encodeURIComponent(this.locationId!)}&contact_id=${encodeURIComponent(contactId)}&limit=50`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl opportunities failed: ${res.status}`);
     return ((await res.json()) as { opportunities?: Record<string, unknown>[] }).opportunities ?? [];
   }
   private async conversationsFor(contactId: string) {
-    const res = await this.fetchImpl(`${API}/conversations/search?locationId=${encodeURIComponent(this.locationId!)}&contactId=${encodeURIComponent(contactId)}&limit=${MAX_CONVERSATIONS}`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/conversations/search?locationId=${encodeURIComponent(this.locationId!)}&contactId=${encodeURIComponent(contactId)}&limit=${MAX_CONVERSATIONS}`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl conversations failed: ${res.status}`);
     return ((await res.json()) as { conversations?: Record<string, unknown>[] }).conversations ?? [];
   }
   private async messagesFor(conversationId: string) {
-    const res = await this.fetchImpl(`${API}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${MAX_MESSAGES}`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${MAX_MESSAGES}`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl messages failed: ${res.status}`);
     const json = (await res.json()) as { messages?: { messages?: Record<string, unknown>[] } | Record<string, unknown>[] };
     return Array.isArray(json.messages) ? json.messages : (json.messages?.messages ?? []);
   }
   private async appointmentsFor(contactId: string) {
-    const res = await this.fetchImpl(`${API}/contacts/${encodeURIComponent(contactId)}/appointments`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/contacts/${encodeURIComponent(contactId)}/appointments`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl appointments failed: ${res.status}`);
     return ((await res.json()) as { events?: Record<string, unknown>[] }).events ?? [];
   }
   private async notesFor(contactId: string) {
-    const res = await this.fetchImpl(`${API}/contacts/${encodeURIComponent(contactId)}/notes`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/contacts/${encodeURIComponent(contactId)}/notes`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl notes failed: ${res.status}`);
     return ((await res.json()) as { notes?: Record<string, unknown>[] }).notes ?? [];
   }
   private allPipelinesCache: Pipeline[] | null = null;
   private async allPipelines(): Promise<Pipeline[]> {
     if (this.allPipelinesCache) return this.allPipelinesCache;
-    const res = await this.fetchImpl(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(this.locationId!)}`, { headers: this.headers() });
+    const res = await this.fetchImpl(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(this.locationId!)}`, { headers: await this.headers() });
     if (!res.ok) throw new Error(`ghl pipelines failed: ${res.status}`);
     this.allPipelinesCache = ((await res.json()) as { pipelines?: Pipeline[] }).pipelines ?? [];
     return this.allPipelinesCache;
@@ -250,8 +276,9 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     try { return await fn(); } catch { return fallback; }
   }
 
-  private headers() {
-    return { authorization: `Bearer ${this.apiKey}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
+  private async headers() {
+    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, fetchImpl: this.fetchImpl });
+    return { authorization: `Bearer ${token}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
   }
 }
 
@@ -329,7 +356,7 @@ export class GhlAgencyReader implements CrmReader {
     const found: { loc: { id: string; name: string | null }; h: CrmContactHistory }[] = [];
     for (const loc of locations) {
       try {
-        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl).lookupContact(query);
+        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl, this.companyId).lookupContact(query);
         if (h) found.push({ loc, h });
       } catch (err) {
         // one broken sub-account must not hide the others

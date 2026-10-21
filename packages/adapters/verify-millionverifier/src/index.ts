@@ -23,7 +23,7 @@ export class MillionVerifierProvider implements EmailVerifier {
 
   /** Remaining credits; free to call. */
   async credits(): Promise<number> {
-    const url = new URL("/api/credits", this.baseUrl);
+    const url = new URL("/api/v3/credits", this.baseUrl);
     url.searchParams.set("api", this.apiKey!);
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) throw new Error(`millionverifier http ${res.status}`);
