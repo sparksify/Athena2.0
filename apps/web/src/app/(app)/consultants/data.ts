@@ -20,7 +20,7 @@ export interface ConsultantData {
   STAGE_MIX: Record<demo.Stage, number>;
   KPIS: typeof demo.KPIS;
   OVERVIEW_KPIS: typeof demo.OVERVIEW_KPIS;
-  consultantAvatar: (name: string) => string;
+  consultantAvatar: (name: string) => string | null;
   board: Board | null;
 }
 

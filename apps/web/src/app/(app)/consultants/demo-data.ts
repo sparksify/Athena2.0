@@ -39,7 +39,7 @@ export const WEEKLY_CONSULT_TARGET = 3;
 
 export type DemoConsultant = {
   name: string;
-  avatar: string;
+  avatar: string | null;
   brands: string; // short brand mix line (from the 1.0 ownership panel)
   contacted: number; // live opportunities owned (1.0 counts)
   consultsThisWeek: number; // completed real consults, current week — demo

@@ -87,12 +87,13 @@ export function SyncSubAccountsButton() {
   return (
     <div>
       <button className={PRIMARY} disabled={pending} onClick={() => start(async () => setOut(await syncGhlSubAccounts()))}>
-        {pending ? "Matching…" : "Match consultants to GHL sub-accounts"}
+        {pending ? "Syncing…" : "Sync from GHL: match sub-accounts and fill contact details"}
       </button>
       {out && !out.ok && <p className="mt-2 text-xs text-red-400">{out.error}</p>}
       {out?.ok && (
         <div className="mt-2 space-y-1 text-xs text-[#C3CCDB]">
           <div>Matched: {out.matched?.length ? out.matched.join(" · ") : "none new"}</div>
+          <div>Contact details filled from GHL: {out.filled?.length ? out.filled.join(", ") : "none (already complete, or the sub-account has no email/phone on file)"}</div>
           {out.unmatchedConsultants?.length ? <div className="text-amber-300">Still need an ID: {out.unmatchedConsultants.join(", ")}</div> : null}
           {out.unmatchedLocations?.length ? <div className="text-[#8B95A7]">{out.unmatchedLocations.length} other sub-accounts in the agency are not consultants on this roster.</div> : null}
         </div>

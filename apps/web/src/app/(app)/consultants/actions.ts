@@ -184,7 +184,7 @@ export async function updatePersona(formData: FormData): Promise<ActionResult> {
  * value someone typed. Returns what matched and what didn't so the gaps
  * can be filled by hand.
  */
-export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: string[]; unmatchedConsultants?: string[]; unmatchedLocations?: string[] }> {
+export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: string[]; filled?: string[]; unmatchedConsultants?: string[]; unmatchedLocations?: string[] }> {
   const who = await actor(MANAGER_ROLES);
   if ("error" in who) return { ok: false, error: who.error };
   if (!process.env.GHL_API_KEY || !(process.env.GHL_COMPANY_ID || process.env.GHL_LOCATION_IDS)) {
@@ -208,10 +208,25 @@ export async function syncGhlSubAccounts(): Promise<ActionResult & { matched?: s
       matched.push(`${c.name} → ${hit.name}`);
     }
   }
+  // Fill blanks (email, phone, timezone) from the sub-account's contact details.
+  const filled: string[] = [];
+  const linked = await db.select({ id: consultant.id, name: consultant.name, ghlRef: consultant.ghlRef, email: consultant.email, phone: consultant.phone })
+    .from(consultant).where(eq(consultant.orgId, who.orgId));
+  for (const c of linked) {
+    if (!c.ghlRef || (c.email && c.phone)) continue;
+    const d = await GhlCrmAdapter.getLocation(c.ghlRef).catch(() => null);
+    if (!d) continue;
+    const patch: { email?: string; phone?: string; timezone?: string } = {};
+    if (!c.email && d.email) patch.email = d.email;
+    if (!c.phone && d.phone) patch.phone = d.phone;
+    if (d.timezone) patch.timezone = d.timezone;
+    if (patch.email || patch.phone) { await db.update(consultant).set(patch).where(eq(consultant.id, c.id)); filled.push(c.name); }
+  }
   revalidatePath("/consultants/roster");
   return {
     ok: true,
     matched,
+    filled,
     unmatchedConsultants: rows.filter((c) => !c.ghlRef && !matched.some((m) => m.startsWith(c.name))).map((c) => c.name),
     unmatchedLocations: locations.filter((l) => !usedLoc.has(l.id)).map((l) => `${l.name ?? "?"} (${l.id})`),
   };

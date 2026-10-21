@@ -62,7 +62,7 @@ export default async function RosterPage() {
           <tbody>
             {consultants.map((c) => (
               <tr key={c.id} className="border-t border-[#1E2635] align-top">
-                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span className="font-medium text-[#E7ECF3]">{c.name}</span></span></td>
+                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL sub-account linked</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.email ?? <span className="text-red-300">no email</span>}<br />{c.phone ?? <span className="text-amber-300">no phone (no SMS nudges)</span>}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.specialties.join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.territories.join(", ") || "national"}</td>
@@ -94,7 +94,7 @@ export default async function RosterPage() {
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#C3CCDB]">Named agents</h2>
         <p className="mt-1 text-[12px] text-[#8B95A7]">Tim, Sophie, Claire and Rina send warm intros from their own mailbox on the persona domain. An agent without an address can still be credited with handoffs, but intros stay queued until one is set.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          {personas.map((p) => <PersonaForm key={p.id} row={p} avatar={resolveAvatar(p.avatar_slug ?? `agent-${p.name.toLowerCase()}`)} />)}
+          {personas.map((p) => <PersonaForm key={p.id} row={p} avatar={resolveAvatar(p.avatar_slug ?? `agent-${p.name.toLowerCase()}`) ?? `/avatars/agent-${p.name.toLowerCase()}.svg`} />)}
         </div>
       </section>
     </main>
