@@ -63,7 +63,7 @@ export function TokenForm({ id, hasToken, linked }: { id: string; hasToken: bool
     <div className="mt-3 rounded-md border border-[#1E2635] bg-[#0F1522] p-3">
       <div className="text-[11px] uppercase tracking-wide text-[#64748B]">GHL sub-account token</div>
       <p className="mt-1 text-[11px] text-[#8B95A7]">
-        {hasToken ? "A token is on file. Paste a new one to replace it." : "No token yet. In this consultant's sub-account: Settings → Private Integrations → create one with Contacts, Conversations, Conversation Messages, Opportunities and Calendar Events."}
+        {hasToken ? "A token is on file. Paste a new one to replace it." : "Optional. With the Athena app connected to the agency, nothing is needed here. Paste a token only to override it for this consultant: in their sub-account, Settings → Private Integrations → create one with Contacts, Conversations, Conversation Messages, Opportunities and Calendar Events."}
         {!linked && " Link the sub-account first."}
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">

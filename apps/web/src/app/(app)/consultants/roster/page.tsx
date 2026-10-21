@@ -65,7 +65,7 @@ export default async function RosterPage() {
           <tbody>
             {consultants.map((c) => (
               <tr key={c.id} className="border-t border-[#1E2635] align-top">
-                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "token set" : <span className="text-amber-300">no token</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
+                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "own token" : agency ? "via Athena app" : <span className="text-amber-300">no token, app not connected</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.email ?? <span className="text-red-300">no email</span>}<br />{c.phone ?? <span className="text-amber-300">no phone (no SMS nudges)</span>}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.specialties.join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.territories.join(", ") || "national"}</td>
