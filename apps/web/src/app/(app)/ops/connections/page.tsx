@@ -57,7 +57,7 @@ async function checkAnthropic(): Promise<Check> {
 
 async function checkGhl(orgId?: string): Promise<Check[]> {
   const out: Check[] = [];
-  const connect = { href: "/api/ghl/oauth/start", label: "Connect GoHighLevel" };
+  const connect = { href: "/api/integrations/crm/connect", label: "Connect GoHighLevel" };
   let agency: GhlAgency | null = null;
   if (!ghlAppConfigured()) {
     out.push({ name: "GoHighLevel app", status: "off", detail: "GHL_CLIENT_ID / GHL_CLIENT_SECRET not set", next: "Register the Athena app in GHL's developer portal (see runbook), add the client id and secret, then connect." });

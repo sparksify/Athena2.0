@@ -16,6 +16,6 @@ export async function GET() {
   const clientId = process.env.GHL_CLIENT_ID;
   if (!clientId) return NextResponse.json({ error: "GHL_CLIENT_ID is not set" }, { status: 503 });
   const state = randomUUID();
-  (await cookies()).set("ghl_oauth_state", state, { httpOnly: true, secure: true, sameSite: "lax", path: "/api/ghl/oauth", maxAge: 600 });
+  (await cookies()).set("ghl_oauth_state", state, { httpOnly: true, secure: true, sameSite: "lax", path: "/api/integrations/crm", maxAge: 600 });
   return NextResponse.redirect(ghlAuthorizeUrl({ clientId, redirectUri: ghlRedirectUri(), state }));
 }

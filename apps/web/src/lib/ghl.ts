@@ -14,4 +14,4 @@ export async function ghlAgency(orgId?: string): Promise<GhlAgencyAccess | null>
 
 export const ghlAppConfigured = () => Boolean(process.env.GHL_CLIENT_ID && process.env.GHL_CLIENT_SECRET);
 
-export const ghlRedirectUri = () => `${process.env.APP_URL ?? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "athena2-0.vercel.app"}`}/api/ghl/oauth/callback`;
+export const ghlRedirectUri = () => `${process.env.APP_URL ?? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "athena2-0.vercel.app"}`}/api/integrations/crm/callback`;
