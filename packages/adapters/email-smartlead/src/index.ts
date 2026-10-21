@@ -13,6 +13,14 @@ import type { EmailProvider, OutboundEmail } from "@athena/contracts";
  * their published v1 REST API and MUST be smoke-tested then (fallback per
  * ADR 0005 review: Instantly adapter, same contract).
  */
+export interface SmartleadAccount {
+  id: string;
+  address: string;
+  fromName: string | null;
+  dailyLimit: number | null;
+  warmupStatus: string | null;
+}
+
 export class SmartleadProvider implements EmailProvider {
   readonly name = "smartlead";
   private apiKey: string;
@@ -27,16 +35,32 @@ export class SmartleadProvider implements EmailProvider {
     if (!this.campaignId) throw new Error("SMARTLEAD_API_CAMPAIGN_ID is not set");
   }
 
+  /** Sending accounts attached to the API campaign — the mailbox pool as Smartlead sees it. */
+  async listCampaignAccounts(): Promise<SmartleadAccount[]> {
+    const res = await fetch(`${this.baseUrl}/campaigns/${this.campaignId}/email-accounts?api_key=${this.apiKey}`);
+    if (!res.ok) throw new Error(`smartlead email-accounts failed: ${res.status} ${await res.text().catch(() => "")}`);
+    const raw = (await res.json()) as unknown;
+    const list = Array.isArray(raw) ? raw : ((raw as { email_accounts?: unknown[] }).email_accounts ?? []);
+    return (list as Record<string, unknown>[])
+      .filter((a) => a && (a.from_email || a.username))
+      .map((a) => ({
+        id: String(a.id),
+        address: String(a.from_email ?? a.username).toLowerCase(),
+        fromName: a.from_name ? String(a.from_name) : null,
+        dailyLimit: Number.isFinite(Number(a.daily_sending_limit ?? a.message_per_day)) ? Number(a.daily_sending_limit ?? a.message_per_day) : null,
+        warmupStatus: (a.warmup_details as { status?: string } | undefined)?.status ?? null,
+      }));
+  }
+
   /** Read-only health check: the API campaign and the sending accounts attached to it. */
   async describeCampaign(): Promise<{ name: string | null; status: string | null; emailAccounts: number }> {
-    const [c, a] = await Promise.all([
+    const [c, accounts] = await Promise.all([
       fetch(`${this.baseUrl}/campaigns/${this.campaignId}?api_key=${this.apiKey}`),
-      fetch(`${this.baseUrl}/campaigns/${this.campaignId}/email-accounts?api_key=${this.apiKey}`),
+      this.listCampaignAccounts().catch(() => [] as SmartleadAccount[]),
     ]);
     if (!c.ok) throw new Error(`smartlead campaign lookup failed: ${c.status} ${await c.text().catch(() => "")}`);
     const campaign = (await c.json()) as { name?: string; status?: string };
-    const accounts = a.ok ? ((await a.json()) as unknown[]) : [];
-    return { name: campaign.name ?? null, status: campaign.status ?? null, emailAccounts: Array.isArray(accounts) ? accounts.length : 0 };
+    return { name: campaign.name ?? null, status: campaign.status ?? null, emailAccounts: accounts.length };
   }
 
   async sendEmail(email: OutboundEmail): Promise<{ providerMessageId: string }> {

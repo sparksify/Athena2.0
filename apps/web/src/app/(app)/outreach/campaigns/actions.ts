@@ -8,6 +8,7 @@ import {
 } from "@athena/db/schema";
 import { addSuppression, draftOutreach, emit, LlmGateway } from "@athena/core";
 import { AnthropicProvider } from "@athena/llm-anthropic";
+import { SmartleadProvider } from "@athena/email-smartlead";
 import { supabaseServer } from "@/lib/supabase/server";
 
 // Same role gate as approval: these writes go through the service connection.
@@ -194,6 +195,54 @@ export async function addMailbox(formData: FormData): Promise<ManageResult> {
   });
   revalidatePath("/outreach/campaigns");
   return { ok: true };
+}
+
+/**
+ * Pull the sending accounts attached to the Smartlead API campaign into the
+ * mailbox pool, so nobody types account ids by hand. New accounts come in
+ * active with Smartlead's own daily limit (capped at 30, the Phase 5 default);
+ * existing rows only pick up a missing Smartlead id. Status and caps already
+ * set here are never overwritten.
+ */
+export async function syncSmartleadMailboxes(): Promise<ManageResult> {
+  const who = await operator();
+  if ("error" in who) return { ok: false, error: who.error };
+  if (!process.env.SMARTLEAD_API_KEY || !process.env.SMARTLEAD_API_CAMPAIGN_ID) {
+    return { ok: false, error: "SMARTLEAD_API_KEY / SMARTLEAD_API_CAMPAIGN_ID are not configured." };
+  }
+  let accounts;
+  try { accounts = await new SmartleadProvider().listCampaignAccounts(); }
+  catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  if (accounts.length === 0) return { ok: true, detail: "Smartlead has no sending accounts attached to the API campaign yet." };
+
+  const db = getDb();
+  let added = 0, linked = 0;
+  await db.transaction(async (tx) => {
+    for (const a of accounts) {
+      const domain = a.address.split("@")[1] ?? "";
+      const [row] = await tx
+        .insert(mailbox)
+        .values({ orgId: who.orgId, provider: "smartlead", address: a.address, domain, dailyCap: Math.min(a.dailyLimit ?? 30, 30), externalRef: a.id, status: "active" })
+        .onConflictDoNothing()
+        .returning({ id: mailbox.id });
+      if (row) {
+        added++;
+        await emit(tx, {
+          orgId: who.orgId, type: "mailbox.added", entityType: "mailbox", entityId: row.id,
+          actorType: "user", actorId: who.userId, payload: { address: a.address, source: "smartlead", smartleadId: a.id, warmup: a.warmupStatus },
+        });
+        continue;
+      }
+      const updated = await tx
+        .update(mailbox)
+        .set({ externalRef: a.id })
+        .where(and(eq(mailbox.orgId, who.orgId), eq(mailbox.address, a.address), isNull(mailbox.externalRef)))
+        .returning({ id: mailbox.id });
+      linked += updated.length;
+    }
+  });
+  revalidatePath("/outreach/campaigns");
+  return { ok: true, detail: `${accounts.length} accounts in Smartlead · ${added} added, ${linked} linked to their Smartlead id.` };
 }
 
 export async function setMailboxStatus(

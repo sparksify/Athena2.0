@@ -1,6 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import {
-  CampaignControls, MailboxControls, NewCampaignForm, NewMailboxForm, SuppressForm,
+  CampaignControls, MailboxControls, NewCampaignForm, NewMailboxForm, SuppressForm, SyncMailboxesButton,
 } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -111,7 +111,8 @@ export default async function CampaignsPage() {
           <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
             Mailbox pool
           </h2>
-          <div className="mt-3">
+          <div className="mt-3 space-y-3">
+            <SyncMailboxesButton />
             <NewMailboxForm />
           </div>
           <ul className="mt-4 space-y-2 text-sm">
@@ -133,8 +134,8 @@ export default async function CampaignsPage() {
             ))}
             {(mailboxes ?? []).length === 0 && (
               <li className="text-sm text-[#64748B]">
-                No mailboxes registered. Add the Smartlead pool addresses here; only <em>active</em>{" "}
-                mailboxes under their daily cap ever send.
+                No mailboxes registered. Connect the sending accounts to the Smartlead API campaign, then
+                pull them in here; only <em>active</em> mailboxes under their daily cap ever send.
               </li>
             )}
           </ul>

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import {
-  addMailbox, createCampaign, draftBatch, setCampaignStatus, setMailboxStatus, suppressManually,
+  addMailbox, createCampaign, draftBatch, setCampaignStatus, setMailboxStatus, suppressManually, syncSmartleadMailboxes,
   type ManageResult,
 } from "./actions";
 
@@ -86,6 +86,18 @@ export function NewMailboxForm() {
       <button className={BTN_PRIMARY} disabled={pending}>Add mailbox</button>
       {msg && <span className="text-xs text-[#8B95A7]">{msg}</span>}
     </form>
+  );
+}
+
+export function SyncMailboxesButton() {
+  const { pending, msg, run } = useAction();
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <button className={BTN_PRIMARY} disabled={pending} onClick={() => run(() => syncSmartleadMailboxes())}>
+        {pending ? "Syncing…" : "Pull mailboxes from Smartlead"}
+      </button>
+      {msg && <span className="text-xs text-[#8B95A7]">{msg}</span>}
+    </span>
   );
 }
 
