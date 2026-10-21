@@ -156,14 +156,18 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     this.agencyToken = opts.agencyToken ?? null;
   }
 
-  /** The mirror needs a way in (API key or the installed app) and a pipeline; the location comes per consultant. */
+  /** The mirror needs a way in (API key or the installed app); the location and pipeline come per consultant. */
   static configured(agency?: GhlAgency | null): boolean {
-    return Boolean((process.env.GHL_API_KEY || agency) && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
+    return Boolean(process.env.GHL_API_KEY || agency);
   }
 
-  /** A different sub-account; `token` is that sub-account's own private-integration token when one is on file. */
-  forLocation(locationId: string, token: string | null = null): GhlCrmAdapter {
-    return new GhlCrmAdapter({ ...this.opts, locationId, locationToken: token });
+  /**
+   * A different sub-account; `token` is that sub-account's own private-
+   * integration token when one is on file, `pipelineRef` the consultant's
+   * chosen pipeline (id or name) inside it.
+   */
+  forLocation(locationId: string, token: string | null = null, pipelineRef: string | null = null): GhlCrmAdapter {
+    return new GhlCrmAdapter({ ...this.opts, locationId, locationToken: token, ...(pipelineRef ? { pipelineRef } : {}) });
   }
 
   /**
@@ -241,15 +245,27 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return json.contact.id;
   }
 
+  /** The pipeline the mirror writes to: the configured ref, or the sub-account's only pipeline when none is chosen. */
   private async loadPipeline(): Promise<Pipeline> {
     if (this.pipeline) return this.pipeline;
-    const res = await this.fetchImpl(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(this.locationId!)}`, { headers: await this.headers() });
-    if (!res.ok) throw new Error(`ghl pipelines failed: ${res.status} ${await res.text()}`);
-    const json = (await res.json()) as { pipelines?: Pipeline[] };
-    const found = (json.pipelines ?? []).find((p) => p.id === this.pipelineRef || norm(p.name) === norm(this.pipelineRef ?? ""));
-    if (!found) throw new Error(`GHL pipeline "${this.pipelineRef}" not found`);
-    this.pipeline = found;
-    return found;
+    const { pipeline } = await this.resolvePipeline();
+    if (!pipeline) throw new Error(`GHL pipeline ${this.pipelineRef ? `"${this.pipelineRef}" not found` : "not chosen"} in sub-account ${this.locationId}`);
+    this.pipeline = pipeline;
+    return pipeline;
+  }
+
+  private async resolvePipeline(): Promise<{ pipeline: Pipeline | null; all: Pipeline[]; defaulted: boolean }> {
+    const all = await this.allPipelines();
+    const ref = this.pipelineRef ?? "";
+    const found = ref ? all.find((p) => p.id === ref || norm(p.name) === norm(ref)) ?? null : null;
+    if (found) return { pipeline: found, all, defaulted: false };
+    if (all.length === 1) return { pipeline: all[0]!, all, defaulted: true };
+    return { pipeline: null, all, defaulted: false };
+  }
+
+  /** Pipelines in this sub-account, for the roster's picker. */
+  async listPipelines(): Promise<{ id: string; name: string }[]> {
+    return (await this.allPipelines()).map((p) => ({ id: p.id, name: p.name }));
   }
 
   /** Contact details on a sub-account (owner email/phone/timezone), for roster prefill. Tolerant: null when GHL refuses. */
@@ -265,10 +281,9 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   }
 
   /** Health check for one sub-account: does the configured pipeline exist there, and what else is available. */
-  async checkPipeline(): Promise<{ matched: string | null; available: string[] }> {
-    const all = await this.allPipelines();
-    const found = all.find((p) => p.id === this.pipelineRef || norm(p.name) === norm(this.pipelineRef ?? ""));
-    return { matched: found?.name ?? null, available: all.map((p) => p.name) };
+  async checkPipeline(): Promise<{ matched: string | null; available: string[]; defaulted: boolean }> {
+    const { pipeline, all, defaulted } = await this.resolvePipeline();
+    return { matched: pipeline?.name ?? null, available: all.map((p) => p.name), defaulted };
   }
 
   // ---------------------------------------------------------------- read side (CrmReader)

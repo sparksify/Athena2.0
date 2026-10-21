@@ -102,20 +102,23 @@ async function checkGhl(orgId?: string): Promise<Check[]> {
         next: matched === total ? undefined : "Roster → “Sync from GHL”, then pick any leftovers from the sub-account list." });
     } catch (e) { out.push({ name: "Consultants matched to sub-accounts", status: "fail", detail: msg(e) }); }
   }
-  const ref = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME;
-  if (!ref) out.push({ name: "GoHighLevel pipeline", status: "fail", detail: "GHL_PIPELINE_ID / GHL_PIPELINE_NAME not set" });
-  else {
-    const tokenFor = new Map((await crmLookupScope(getDb(), orgId!).catch(() => [] as { id: string; token: string | null }[])).map((e) => [e.id, e.token]));
-    const sample = locations.slice(0, 12);
-    const results = await Promise.all(sample.map(async (l) => {
-      try { const c = await withTimeout(new GhlCrmAdapter({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }).forLocation(l.id, tokenFor.get(l.id) ?? null).checkPipeline()); return { l, ...c, error: null as string | null }; }
-      catch (e) { return { l, matched: null, available: [] as string[], error: msg(e) }; }
+  if (orgId && process.env.DATABASE_URL) {
+    const cons = rows<{ id: string; name: string; ghl_ref: string; ghl_pipeline: string | null; ghl_token: string | null }>(await getDb().execute(sql`
+      select c.id, c.name, c.ghl_ref, c.ghl_pipeline, s.ghl_token from consultant c left join consultant_secret s on s.consultant_id = c.id
+      where c.org_id = ${orgId} and c.status = 'active' and c.ghl_ref is not null order by c.name`));
+    const results = await Promise.all(cons.map(async (c) => {
+      try {
+        const r = await withTimeout(new GhlCrmAdapter({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }).forLocation(c.ghl_ref, c.ghl_token, c.ghl_pipeline).checkPipeline());
+        return { c, ...r, error: null as string | null };
+      } catch (e) { return { c, matched: null, available: [] as string[], defaulted: false, error: msg(e) }; }
     }));
-    const hits = results.filter((r) => r.matched);
-    const misses = results.filter((r) => !r.matched);
-    out.push({ name: "GoHighLevel pipeline", status: misses.length === 0 ? "ok" : hits.length ? "warn" : "fail",
-      detail: `“${ref}” found in ${hits.length} of ${results.length} sub-accounts` + (misses.length ? ` · missing in ${misses.map((m) => `${m.l.name ?? m.l.id}${m.error ? ` (${m.error})` : m.available.length ? ` (has: ${m.available.join(", ")})` : ""}`).join("; ")}` : ""),
-      next: misses.length ? "Pipeline ids differ per sub-account. Set GHL_PIPELINE_NAME to the pipeline’s name instead of GHL_PIPELINE_ID so every sub-account matches." : undefined });
+    const ok = results.filter((r) => r.matched);
+    const missing = results.filter((r) => !r.matched);
+    out.push({ name: "GoHighLevel pipeline per consultant", status: !results.length ? "warn" : missing.length === 0 ? "ok" : ok.length ? "warn" : "fail",
+      detail: `${ok.length} of ${results.length} consultants have a pipeline for the mirror` +
+        (ok.length ? ` · ${ok.map((r) => `${r.c.name}: ${r.matched}${r.defaulted ? " (only one)" : ""}`).join("; ")}` : "") +
+        (missing.length ? ` · needs a choice: ${missing.map((r) => `${r.c.name}${r.error ? ` (${r.error})` : ` (has: ${r.available.join(", ") || "none"})`}`).join("; ")}` : ""),
+      next: missing.length ? "Roster → edit the consultant → “GHL pipeline for new opportunities”. Sub-accounts with a single pipeline need nothing." : undefined });
   }
   return out;
 }

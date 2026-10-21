@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
 import { GhlCrmAdapter } from "@athena/crm-ghl";
 import { ghlAgency } from "@/lib/ghl";
-import { AddFromSubAccountForm, ConsultantForm, DeleteButton, PersonaForm, StatusButton, SyncSubAccountsButton, TokenForm } from "./forms";
+import { AddFromSubAccountForm, ConsultantForm, DeleteButton, PersonaForm, PipelineSelect, StatusButton, SyncSubAccountsButton, TokenForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Consultant roster — Athena" };
@@ -13,7 +13,7 @@ const rows = <T,>(r: unknown): T[] => (Array.isArray(r) ? (r as T[]) : ((r as { 
 
 export interface RosterRow {
   id: string; name: string; email: string | null; phone: string | null; timezone: string; specialties: string[]; territories: string[];
-  status: "active" | "paused"; max_load: number; user_id: string | null; ghl_ref: string | null; avatar_slug: string | null; active_load: number; has_token: boolean;
+  status: "active" | "paused"; max_load: number; user_id: string | null; ghl_ref: string | null; ghl_pipeline: string | null; avatar_slug: string | null; active_load: number; has_token: boolean;
 }
 export interface PersonaRow { id: string; name: string; address: string | null; signature_html: string; active: boolean; avatar_slug: string | null; handoffs: number }
 export interface UserOption { id: string; email: string; full_name: string | null }
@@ -39,8 +39,25 @@ export default async function RosterPage() {
     rows<UserOption>(await db.execute(sql`select id, email, full_name from "user" where org_id = ${orgId} and role = 'consultant' order by email`)),
   ]);
 
-  const onRoster = new Set(consultants.map((c) => c.ghl_ref).filter(Boolean));
   const agency = await ghlAgency(orgId).catch(() => null);
+  // Each linked consultant's pipelines, read from their sub-account through the app (or their own token).
+  const tokens = new Map(rows<{ consultant_id: string; ghl_token: string | null }>(await db.execute(sql`select consultant_id, ghl_token from consultant_secret where org_id = ${orgId}`)).map((r) => [r.consultant_id, r.ghl_token]));
+  const pipelinesFor = new Map<string, { options: { id: string; name: string }[]; error: string | null }>();
+  await Promise.all(consultants.filter((c) => c.ghl_ref).map(async (c) => {
+    try {
+      const adapter = new GhlCrmAdapter({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined }).forLocation(c.ghl_ref!, tokens.get(c.id) ?? null);
+      pipelinesFor.set(c.id, { options: await adapter.listPipelines(), error: null });
+    } catch (e) { pipelinesFor.set(c.id, { options: [], error: (e instanceof Error ? e.message : String(e)).slice(0, 120) }); }
+  }));
+  const pipelineLabel = (c: RosterRow) => {
+    const p = pipelinesFor.get(c.id);
+    if (!p || p.error) return null;
+    const chosen = c.ghl_pipeline ? p.options.find((o) => o.id === c.ghl_pipeline || o.name.toLowerCase() === c.ghl_pipeline!.toLowerCase()) : null;
+    if (chosen) return chosen.name;
+    if (!c.ghl_pipeline && p.options.length === 1) return p.options[0]!.name;
+    return null;
+  };
+  const onRoster = new Set(consultants.map((c) => c.ghl_ref).filter(Boolean));
   const subAccounts = GhlCrmAdapter.readConfigured(agency)
     ? (await GhlCrmAdapter.listLocations({ agencyToken: agency?.agencyToken, companyId: agency?.companyId ?? undefined, scope: [] }).catch(() => [] as { id: string; name: string | null }[]))
         .filter((l) => !onRoster.has(l.id))
@@ -65,14 +82,14 @@ export default async function RosterPage() {
           <tbody>
             {consultants.map((c) => (
               <tr key={c.id} className="border-t border-[#1E2635] align-top">
-                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "own token" : agency ? "via Athena app" : <span className="text-amber-300">no token, app not connected</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
+                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "own token" : agency ? "via Athena app" : <span className="text-amber-300">no token, app not connected</span>}{pipelineLabel(c) ? <span className="text-[#8B95A7]"> · {pipelineLabel(c)}</span> : <span className="text-amber-300"> · pipeline not chosen</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.email ?? <span className="text-red-300">no email</span>}<br />{c.phone ?? <span className="text-amber-300">no phone (no SMS nudges)</span>}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.specialties.join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.territories.join(", ") || "national"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.active_load} / {c.max_load}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{users.find((u) => u.id === c.user_id)?.email ?? <span className="text-[#64748B]">not linked</span>}</td>
                 <td className="px-3 py-2"><StatusButton id={c.id} status={c.status} /></td>
-                <td className="px-3 py-2"><details><summary className="cursor-pointer text-indigo-300">edit</summary><div className="mt-2"><ConsultantForm row={c} users={users} /><TokenForm id={c.id} hasToken={c.has_token} linked={Boolean(c.ghl_ref)} /><div className="mt-3"><DeleteButton id={c.id} name={c.name} /></div></div></details></td>
+                <td className="px-3 py-2"><details><summary className="cursor-pointer text-indigo-300">edit</summary><div className="mt-2"><ConsultantForm row={c} users={users} />{c.ghl_ref && <PipelineSelect id={c.id} current={c.ghl_pipeline} options={pipelinesFor.get(c.id)?.options ?? []} error={pipelinesFor.get(c.id)?.error ?? null} />}<TokenForm id={c.id} hasToken={c.has_token} linked={Boolean(c.ghl_ref)} /><div className="mt-3"><DeleteButton id={c.id} name={c.name} /></div></div></details></td>
               </tr>
             ))}
           </tbody>

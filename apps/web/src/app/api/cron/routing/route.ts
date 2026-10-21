@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   const drained = await drainRoutingJobs(db, {
     llm: new LlmGateway(new AnthropicProvider(), db),
     email: GmailProvider.configured() ? new GmailProvider() : null,
-    crm: GhlCrmAdapter.configured(agency) ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter(ghl).forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null,
+    crm: GhlCrmAdapter.configured(agency) ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter(ghl).forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken, c.ghlPipeline) : null) : null,
     appUrl,
   }, { limit: 50 });
   const tick = await runAccountabilityTick(db, GhlSmsProvider.configured(agency) ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider(ghl).forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null, {

@@ -8,7 +8,7 @@ import { routeCandidate, type RoutingTrigger } from "./assign";
 import { sendWarmIntro } from "./intro";
 
 /** What a per-consultant adapter needs: the sub-account and, when on file, its own token. */
-export interface ConsultantRef { id: string; ghlRef: string | null; ghlToken: string | null }
+export interface ConsultantRef { id: string; ghlRef: string | null; ghlToken: string | null; ghlPipeline: string | null }
 
 export const ROUTING_JOB_TYPES = ["routing.assign", "routing.intro", "crm.sync"] as const;
 
@@ -76,9 +76,9 @@ async function resolveCrm(
   pick: (c: ConsultantRef) => CrmSyncAdapter | null,
   opportunityId: string,
 ): Promise<CrmSyncAdapter | null> {
-  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef, ghlToken: consultantSecret.ghlToken }).from(consultant)
+  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef, ghlPipeline: consultant.ghlPipeline, ghlToken: consultantSecret.ghlToken }).from(consultant)
     .innerJoin(opportunity, eq(opportunity.consultantId, consultant.id))
     .leftJoin(consultantSecret, eq(consultantSecret.consultantId, consultant.id))
     .where(eq(opportunity.id, opportunityId)).limit(1);
-  return row ? pick({ id: row.id, ghlRef: row.ghlRef, ghlToken: row.ghlToken ?? null }) : null;
+  return row ? pick({ id: row.id, ghlRef: row.ghlRef, ghlToken: row.ghlToken ?? null, ghlPipeline: row.ghlPipeline }) : null;
 }

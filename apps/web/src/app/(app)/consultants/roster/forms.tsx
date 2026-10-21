@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addConsultantFromSubAccount, deleteConsultant, setConsultantStatus, setConsultantToken, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
+import { addConsultantFromSubAccount, deleteConsultant, setConsultantPipeline, setConsultantStatus, setConsultantToken, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
 import type { PersonaRow, RosterRow, UserOption } from "./page";
 
 const INPUT = "w-full rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-xs text-[#E7ECF3] placeholder:text-[#3D4A5C] focus:border-indigo-500 focus:outline-none";
@@ -52,6 +52,27 @@ export function AddFromSubAccountForm({ options }: { options: { id: string; name
       </label>
       <button className={PRIMARY} disabled={pending || !picked} onClick={() => run(() => addConsultantFromSubAccount(picked))}>{pending ? "Adding…" : "Add to roster"}</button>
       {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
+    </div>
+  );
+}
+
+export function PipelineSelect({ id, current, options, error }: { id: string; current: string | null; options: { id: string; name: string }[]; error: string | null }) {
+  const { pending, msg, run } = useAct();
+  const [value, setValue] = useState(current ?? "");
+  return (
+    <div className="mt-3 rounded-md border border-[#1E2635] bg-[#0F1522] p-3">
+      <div className="text-[11px] uppercase tracking-wide text-[#64748B]">GHL pipeline for new opportunities</div>
+      <p className="mt-1 text-[11px] text-[#8B95A7]">
+        {error ? `Could not read this sub-account's pipelines: ${error}` : options.length === 0 ? "This sub-account has no pipelines yet." : options.length === 1 ? "One pipeline in this sub-account; it is used automatically." : "Pick the pipeline Athena should mirror handoffs into."}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <select value={value} onChange={(e) => setValue(e.target.value)} className={`${INPUT} max-w-md`} disabled={!options.length}>
+          <option value="">{options.length === 1 ? `(automatic) ${options[0]!.name}` : "choose…"}</option>
+          {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+        <button className={PRIMARY} disabled={pending || value === (current ?? "")} onClick={() => run(() => setConsultantPipeline(id, value))}>Save</button>
+        {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
+      </div>
     </div>
   );
 }

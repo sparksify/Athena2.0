@@ -159,6 +159,17 @@ export async function addConsultantFromSubAccount(locationId: string): Promise<A
   return { ok: true, detail: existing ? `${name} linked to the sub-account.` : `${name} added${details?.email ? ` (${details.email})` : ""}. Set their mobile if GHL had none.` };
 }
 
+/** Which pipeline in the consultant's sub-account the opportunity mirror writes to (empty = the sub-account's only one). */
+export async function setConsultantPipeline(id: string, pipelineRef: string): Promise<ActionResult> {
+  const who = await actor(MANAGER_ROLES);
+  if ("error" in who) return { ok: false, error: who.error };
+  const value = pipelineRef.trim() || null;
+  const r = await getDb().update(consultant).set({ ghlPipeline: value }).where(and(eq(consultant.id, id), eq(consultant.orgId, who.orgId))).returning({ id: consultant.id });
+  if (!r.length) return { ok: false, error: "Consultant not found." };
+  revalidatePath("/consultants/roster"); revalidatePath("/ops/connections");
+  return { ok: true, detail: value ? "Pipeline saved." : "Pipeline cleared; the sub-account's only pipeline is used." };
+}
+
 /** Store (or clear) the consultant's own GHL sub-account token. Never echoed back; the roster only shows whether one is set. */
 export async function setConsultantToken(id: string, token: string): Promise<ActionResult> {
   const who = await actor(MANAGER_ROLES);

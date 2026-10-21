@@ -510,6 +510,7 @@ export const consultant = pgTable(
     status: text("status", { enum: ["active", "paused"] }).notNull().default("active"),
     maxLoad: integer("max_load").notNull().default(20),
     ghlRef: text("ghl_ref"),
+    ghlPipeline: text("ghl_pipeline"),
     avatarSlug: text("avatar_slug"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
