@@ -144,6 +144,18 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return found;
   }
 
+  /** Contact details on a sub-account (owner email/phone/timezone), for roster prefill. Tolerant: null when GHL refuses. */
+  static async getLocation(locationId: string, opts: { apiKey?: string; fetchImpl?: typeof fetch } = {}): Promise<{ id: string; name: string | null; email: string | null; phone: string | null; timezone: string | null } | null> {
+    const apiKey = opts.apiKey ?? process.env.GHL_API_KEY;
+    if (!apiKey) return null;
+    const f = opts.fetchImpl ?? fetch;
+    const res = await f(`${API}/locations/${encodeURIComponent(locationId)}`, { headers: { authorization: `Bearer ${apiKey}`, version: VERSION, accept: "application/json" } });
+    if (!res.ok) return null;
+    const l = ((await res.json()) as { location?: Record<string, unknown> }).location;
+    if (!l) return null;
+    return { id: String(l.id ?? locationId), name: str(l.name), email: str(l.email)?.toLowerCase() ?? null, phone: str(l.phone), timezone: str(l.timezone) };
+  }
+
   /** Health check for one sub-account: does the configured pipeline exist there, and what else is available. */
   async checkPipeline(): Promise<{ matched: string | null; available: string[] }> {
     const all = await this.allPipelines();

@@ -14,7 +14,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 const MANAGER_ROLES = new Set(["super_admin", "fcc_admin", "manager"]);
 const WORK_ROLES = new Set([...MANAGER_ROLES, "consultant"]);
 
-export interface ActionResult { ok: boolean; error?: string }
+export interface ActionResult { ok: boolean; error?: string; detail?: string }
 
 async function actor(roles: Set<string>) {
   const supabase = await supabaseServer();
@@ -123,6 +123,36 @@ export async function upsertConsultant(formData: FormData): Promise<ActionResult
   else await db.insert(consultant).values({ orgId: who.orgId, ...values, avatarSlug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") });
   revalidatePath("/consultants/roster"); revalidatePath("/consultants");
   return { ok: true };
+}
+
+/**
+ * The normal way onto the roster: pick the consultant's GHL sub-account.
+ * Name, email, phone and timezone come from the sub-account; ghl_ref is set
+ * so nudges, the pipeline mirror and lead lookups go to the right place.
+ * Re-adding an existing name just links the sub-account.
+ */
+export async function addConsultantFromSubAccount(locationId: string): Promise<ActionResult> {
+  const who = await actor(MANAGER_ROLES);
+  if ("error" in who) return { ok: false, error: who.error };
+  if (!locationId) return { ok: false, error: "Pick a sub-account." };
+  const listed = (await GhlCrmAdapter.listLocations({ scope: [] })).find((l) => l.id === locationId);
+  const details = await GhlCrmAdapter.getLocation(locationId).catch(() => null);
+  const name = (details?.name ?? listed?.name ?? "").trim();
+  if (!name) return { ok: false, error: "That sub-account has no name in GHL." };
+  const db = getDb();
+  const [existing] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef }).from(consultant)
+    .where(and(eq(consultant.orgId, who.orgId), eq(consultant.name, name))).limit(1);
+  if (existing) {
+    await db.update(consultant).set({ ghlRef: locationId }).where(eq(consultant.id, existing.id));
+  } else {
+    await db.insert(consultant).values({
+      orgId: who.orgId, name, email: details?.email ?? null, phone: details?.phone ?? null,
+      timezone: details?.timezone ?? "America/New_York", ghlRef: locationId,
+      avatarSlug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    });
+  }
+  revalidatePath("/consultants/roster"); revalidatePath("/consultants");
+  return { ok: true, detail: existing ? `${name} linked to the sub-account.` : `${name} added${details?.email ? ` (${details.email})` : ""}. Set their mobile if GHL had none.` };
 }
 
 export async function setConsultantStatus(id: string, status: "active" | "paused"): Promise<ActionResult> {

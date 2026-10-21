@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setConsultantStatus, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
+import { addConsultantFromSubAccount, setConsultantStatus, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
 import type { PersonaRow, RosterRow, UserOption } from "./page";
 
 const INPUT = "w-full rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-xs text-[#E7ECF3] placeholder:text-[#3D4A5C] focus:border-indigo-500 focus:outline-none";
@@ -11,7 +11,7 @@ const PRIMARY = "rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-w
 function useAct() {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  const run = (fn: () => Promise<ActionResult>) => start(async () => { setMsg(null); const r = await fn(); setMsg(r.ok ? "Saved." : (r.error ?? "failed")); });
+  const run = (fn: () => Promise<ActionResult>) => start(async () => { setMsg(null); const r = await fn(); setMsg(r.ok ? (r.detail ?? "Saved.") : (r.error ?? "failed")); });
   return { pending, msg, run };
 }
 
@@ -36,6 +36,23 @@ export function ConsultantForm({ row, users }: { row?: RosterRow; users: UserOpt
       <label className="md:col-span-2"><span className={LABEL}>GHL sub-account (location) ID</span><input name="ghl_ref" defaultValue={row?.ghl_ref ?? ""} placeholder="their sub-account id; texts and the pipeline mirror go here" className={INPUT} /></label>
       <div className="flex items-end gap-2 md:col-span-2"><button className={PRIMARY} disabled={pending}>{row ? "Save" : "Add consultant"}</button>{msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}</div>
     </form>
+  );
+}
+
+export function AddFromSubAccountForm({ options }: { options: { id: string; name: string | null }[] }) {
+  const { pending, msg, run } = useAct();
+  const [picked, setPicked] = useState("");
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="min-w-72 flex-1"><span className={LABEL}>GHL sub-account</span>
+        <select value={picked} onChange={(e) => setPicked(e.target.value)} className={INPUT}>
+          <option value="">pick a consultant…</option>
+          {options.map((o) => <option key={o.id} value={o.id}>{o.name ?? o.id}</option>)}
+        </select>
+      </label>
+      <button className={PRIMARY} disabled={pending || !picked} onClick={() => run(() => addConsultantFromSubAccount(picked))}>{pending ? "Adding…" : "Add to roster"}</button>
+      {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
+    </div>
   );
 }
 

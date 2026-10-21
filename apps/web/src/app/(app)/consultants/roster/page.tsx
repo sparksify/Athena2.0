@@ -2,7 +2,8 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
-import { ConsultantForm, PersonaForm, StatusButton, SyncSubAccountsButton } from "./forms";
+import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { AddFromSubAccountForm, ConsultantForm, PersonaForm, StatusButton, SyncSubAccountsButton } from "./forms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Consultant roster — Athena" };
@@ -35,6 +36,13 @@ export default async function RosterPage() {
       from persona_mailbox p where p.org_id = ${orgId} order by p.name`)),
     rows<UserOption>(await db.execute(sql`select id, email, full_name from "user" where org_id = ${orgId} and role = 'consultant' order by email`)),
   ]);
+
+  const onRoster = new Set(consultants.map((c) => c.ghl_ref).filter(Boolean));
+  const subAccounts = GhlCrmAdapter.readConfigured()
+    ? (await GhlCrmAdapter.listLocations({ scope: [] }).catch(() => [] as { id: string; name: string | null }[]))
+        .filter((l) => !onRoster.has(l.id))
+        .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+    : [];
 
   return (
     <main className="p-6">
@@ -69,15 +77,18 @@ export default async function RosterPage() {
       </section>
 
       <div className="mt-4 rounded-lg border border-[#1E2635] bg-[#121826] p-4">
-        <div className="text-[13px] font-medium text-[#E7ECF3]">GoHighLevel sub-accounts</div>
-        <p className="mb-3 mt-1 text-[12px] text-[#8B95A7]">Each consultant has their own GHL sub-account. Nudge texts and the pipeline mirror go to that account, and lead lookups search all of them. Match by name, then fix any gaps in the edit form.</p>
-        <SyncSubAccountsButton />
+        <div className="text-[13px] font-medium text-[#E7ECF3]">Add a consultant</div>
+        <p className="mb-3 mt-1 text-[12px] text-[#8B95A7]">Every consultant is a GoHighLevel sub-account. Pick theirs and Athena fills in the name, email, phone and timezone, and routes nudge texts, the pipeline mirror and lead lookups to that account.</p>
+        {subAccounts.length ? <AddFromSubAccountForm options={subAccounts} /> : <p className="text-[12px] text-[#8B95A7]">{GhlCrmAdapter.readConfigured() ? "Every sub-account is already on the roster." : "Connect GoHighLevel (GHL_API_KEY + GHL_COMPANY_ID) to pick from sub-accounts."}</p>}
+        <details className="mt-3">
+          <summary className="cursor-pointer text-[12px] text-indigo-300">Add by hand instead</summary>
+          <div className="mt-3"><ConsultantForm users={users} /></div>
+        </details>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-[12px] text-indigo-300">Re-match existing consultants to sub-accounts by name</summary>
+          <div className="mt-3"><SyncSubAccountsButton /></div>
+        </details>
       </div>
-
-      <details className="mt-4 rounded-lg border border-[#1E2635] bg-[#121826] p-4">
-        <summary className="cursor-pointer text-[13px] font-medium text-[#E7ECF3]">Add a consultant</summary>
-        <div className="mt-3"><ConsultantForm users={users} /></div>
-      </details>
 
       <section className="mt-8">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#C3CCDB]">Named agents</h2>
