@@ -5,6 +5,8 @@
 // Prints everything Athena would pull for that person: tags, DND, pipeline
 // stage, opportunities, message history, appointments, notes. Read-only.
 import { GhlAgencyReader } from "@athena/crm-ghl";
+import { getDb } from "@athena/db";
+import { crmLookupScope } from "@athena/core";
 
 async function main() {
   const [q] = process.argv.slice(2);
@@ -12,7 +14,8 @@ async function main() {
     console.error("usage: tsx scripts/smoke/ghl-lookup.ts <email-or-phone>");
     process.exit(1);
   }
-  const crm = new GhlAgencyReader();
+  const crm = await GhlAgencyReader.scoped(process.env.DATABASE_URL ? await crmLookupScope(getDb()) : []);
+  console.log(`scope: ${crm.scope} (${(await crm.listLocations()).length} of ${crm.total} sub-accounts)`);
   console.log("sub-accounts:", (await crm.listLocations()).map((l) => `${l.name ?? "?"} (${l.id})`).join(", "));
   const h = await crm.lookupContact(q.includes("@") ? { email: q } : { phone: q });
   if (!h) {

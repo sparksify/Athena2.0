@@ -33,13 +33,15 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   }
 
   /**
-   * Every sub-account the agency token can see. Needs GHL_COMPANY_ID (the
-   * agency id) unless GHL_LOCATION_IDS lists them explicitly.
+   * Sub-accounts the agency token can see. Needs GHL_COMPANY_ID (the agency
+   * id) unless the scope lists ids explicitly. `scope` entries are sub-account
+   * ids or names (case/punctuation-insensitive); it defaults to
+   * GHL_LOCATION_IDS. An empty scope means every sub-account.
    */
-  static async listLocations(opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<{ id: string; name: string | null }[]> {
+  static async listLocations(opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch; scope?: string[] } = {}): Promise<{ id: string; name: string | null }[]> {
     const apiKey = opts.apiKey ?? process.env.GHL_API_KEY;
     const companyId = opts.companyId ?? process.env.GHL_COMPANY_ID;
-    const explicit = (process.env.GHL_LOCATION_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    const explicit = (opts.scope ?? envScope()).filter(Boolean);
     if (explicit.length && !companyId) return explicit.map((id) => ({ id, name: null }));
     if (!apiKey || !companyId) {
       const one = process.env.GHL_LOCATION_ID;
@@ -59,7 +61,9 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
       if (page.length < 100) break;
       skip += 100;
     }
-    return explicit.length ? out.filter((l) => explicit.includes(l.id)) : out;
+    if (!explicit.length) return out;
+    const wanted = new Set(explicit.map(norm));
+    return out.filter((l) => wanted.has(norm(l.id)) || (l.name != null && wanted.has(norm(l.name))));
   }
 
   async upsertOpportunity(input: { externalContactRef?: string; name: string; stage: string; email?: string; phone?: string }): Promise<{ externalRef: string }> {
@@ -277,6 +281,7 @@ export function parseGhlStageWebhook(payload: unknown): { externalRef: string; s
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const envScope = () => (process.env.GHL_LOCATION_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
 
 
 /**
@@ -296,6 +301,21 @@ export class GhlAgencyReader implements CrmReader {
     preset?: { id: string; name: string | null }[],
   ) {
     if (preset) this.locations = preset;
+  }
+
+  /**
+   * A reader over the sub-accounts that matter: GHL_LOCATION_IDS (ids or
+   * names) plus whatever the caller adds — normally the active consultants'
+   * sub-accounts from the roster. Agencies carry hundreds of sub-accounts;
+   * a lookup across all of them per candidate is not viable. When nothing in
+   * the scope matches, every sub-account is used and `scope` says so.
+   */
+  static async scoped(extra: string[] = [], opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<GhlAgencyReader & { scope: "scoped" | "all"; total: number }> {
+    const all = await GhlCrmAdapter.listLocations({ ...opts, scope: [] });
+    const wanted = new Set([...envScope(), ...extra].map(norm));
+    const picked = wanted.size ? all.filter((l) => wanted.has(norm(l.id)) || (l.name != null && wanted.has(norm(l.name)))) : [];
+    const reader = new GhlAgencyReader(opts.apiKey, opts.companyId, opts.fetchImpl, picked.length ? picked : all);
+    return Object.assign(reader, { scope: picked.length ? ("scoped" as const) : ("all" as const), total: all.length });
   }
 
   async listLocations() {

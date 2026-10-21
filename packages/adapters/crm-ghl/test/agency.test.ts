@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CrmContactHistory } from "@athena/contracts";
-import { GhlAgencyReader, mergeHistories } from "../src/index";
+import { GhlAgencyReader, GhlCrmAdapter, mergeHistories } from "../src/index";
 
 const D = (s: string) => new Date(s);
 const base = (over: Partial<CrmContactHistory>): CrmContactHistory => ({
@@ -53,5 +53,22 @@ describe("one CRM reader over every consultant sub-account", () => {
     expect(h?.locations).toEqual([{ id: "L-adam", name: "Adam Gruen" }]);
     expect(calls.filter((c) => c.endsWith("/contacts/search"))).toHaveLength(3);
     expect(await reader.lookupContact({ email: "nobody@example.com" })).toBeNull();
+  });
+
+  it("scopes lookups to named or listed sub-accounts and falls back to all when nothing matches", async () => {
+    const fetchImpl = (async (url: string | URL | Request) => {
+      if (String(url).includes("/locations/search")) {
+        return Response.json({ locations: [{ id: "L1", name: "Rob Petka" }, { id: "L2", name: "FCC - Lead Transfer" }, { id: "L3", name: "Someone Else" }] });
+      }
+      return Response.json({});
+    }) as typeof fetch;
+    const opts = { apiKey: "key", companyId: "agency", fetchImpl };
+    expect((await GhlCrmAdapter.listLocations({ ...opts, scope: ["fcc lead transfer", "L1"] })).map((l) => l.id)).toEqual(["L1", "L2"]);
+    const scoped = await GhlAgencyReader.scoped(["Rob Petka"], opts);
+    expect(scoped.scope).toBe("scoped");
+    expect((await scoped.listLocations()).map((l) => l.id)).toEqual(["L1"]);
+    const wide = await GhlAgencyReader.scoped(["nobody"], opts);
+    expect(wide.scope).toBe("all");
+    expect(wide.total).toBe(3);
   });
 });

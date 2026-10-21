@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
+import { crmLookupScope } from "@athena/core";
 import { supabaseServer } from "@/lib/supabase/server";
 import { AnthropicProvider } from "@athena/llm-anthropic";
-import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { SmartleadProvider } from "@athena/email-smartlead";
 import { MillionVerifierProvider } from "@athena/verify-millionverifier";
 import { GmailProvider } from "@athena/email-gmail";
@@ -58,10 +59,16 @@ async function checkGhl(orgId?: string): Promise<Check[]> {
   if (!process.env.GHL_API_KEY) return [{ name: "GoHighLevel", status: "fail", detail: "GHL_API_KEY is not set" }];
   let locations: { id: string; name: string | null }[];
   try {
-    locations = await withTimeout(GhlCrmAdapter.listLocations());
-    out.push({ name: "GoHighLevel sub-accounts", status: locations.length ? "ok" : "warn",
-      detail: locations.length ? `${locations.length} visible: ${locations.map((l) => l.name ?? l.id).join(", ")}` : "agency token works but no sub-accounts came back",
-      next: locations.length ? undefined : "Check GHL_COMPANY_ID is the agency id." });
+    const scopeRefs = orgId && process.env.DATABASE_URL ? await crmLookupScope(getDb(), orgId).catch(() => [] as string[]) : [];
+    const reader = await withTimeout(GhlAgencyReader.scoped(scopeRefs));
+    locations = await reader.listLocations();
+    const wide = reader.scope === "all" && reader.total > 25;
+    out.push({ name: "GoHighLevel sub-accounts", status: reader.total ? (wide ? "warn" : "ok") : "warn",
+      detail: reader.total
+        ? `${reader.total} visible · lookups search ${reader.scope === "all" ? "all of them" : `${locations.length}: ${locations.map((l) => l.name ?? l.id).join(", ")}`}`
+        : "agency token works but no sub-accounts came back",
+      next: !reader.total ? "Check GHL_COMPANY_ID is the agency id."
+        : wide ? "Match consultants to their sub-accounts and set GHL_LOCATION_IDS (ids or names) to the central accounts that hold lead history; searching every sub-account per candidate is too slow." : undefined });
   } catch (e) {
     return [{ name: "GoHighLevel sub-accounts", status: "fail", detail: msg(e), next: "GHL_API_KEY must be an agency-level token and GHL_COMPANY_ID the agency id." }];
   }

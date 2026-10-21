@@ -68,7 +68,7 @@ export { syncOpportunity, applyCrmStage } from "./accountability/crm";
 export { drainRoutingJobs, ROUTING_JOB_TYPES, type DrainDeps, type DrainSummary } from "./routing/drain";
 export { loadBoard, slaFor, WEEKLY_CONSULT_TARGET, type Board, type BoardConsultant, type BoardLead, type BoardAppointment, type SlaState } from "./routing/board";
 // Enrichment
-export { enrichFromCrm, enqueueCrmLookups, drainCrmLookups, CRM_JOB_TYPE, CRM_ATTRIBUTE_KEYS, type CrmEnrichResult } from "./ingest/crm-enrich";
+export { enrichFromCrm, enqueueCrmLookups, drainCrmLookups, crmLookupScope, CRM_JOB_TYPE, CRM_ATTRIBUTE_KEYS, type CrmEnrichResult } from "./ingest/crm-enrich";
 export {
   researchCandidate, enqueueResearch, drainResearch, researchSpentToday,
   RESEARCH_JOB_TYPE, RESEARCH_MODEL, RESEARCH_MIN_SCORE, RESEARCH_DAILY_BUDGET_USD, type ResearchResult,

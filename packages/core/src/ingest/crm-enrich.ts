@@ -149,6 +149,16 @@ export async function enrichFromCrm(
 
 export const CRM_JOB_TYPE = "crm.lookup";
 
+/**
+ * Sub-account refs the CRM reader should search: the active consultants'
+ * own sub-accounts. Callers add GHL_LOCATION_IDS (the central accounts that
+ * hold lead history) through the adapter.
+ */
+export async function crmLookupScope(db: EmitTx, orgId?: string): Promise<string[]> {
+  return rows<{ ghl_ref: string }>(await db.execute(sql`
+    select distinct ghl_ref from consultant where status = 'active' and ghl_ref is not null ${orgId ? sql`and org_id = ${orgId}` : sql``}`)).map((r) => r.ghl_ref);
+}
+
 /** Queue a lookup for every candidate that has never been checked (or everyone with `force`). */
 export async function enqueueCrmLookups(db: EmitTx, orgId: string, opts: { candidateIds?: string[]; force?: boolean; limit?: number } = {}): Promise<number> {
   const limit = opts.limit ?? 5000;
