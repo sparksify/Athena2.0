@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addConsultantFromSubAccount, setConsultantStatus, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
+import { addConsultantFromSubAccount, deleteConsultant, setConsultantStatus, setConsultantToken, syncGhlSubAccounts, updatePersona, upsertConsultant, type ActionResult } from "../actions";
 import type { PersonaRow, RosterRow, UserOption } from "./page";
 
 const INPUT = "w-full rounded-md border border-[#2A3447] bg-[#0F1522] px-2 py-1.5 text-xs text-[#E7ECF3] placeholder:text-[#3D4A5C] focus:border-indigo-500 focus:outline-none";
@@ -53,6 +53,39 @@ export function AddFromSubAccountForm({ options }: { options: { id: string; name
       <button className={PRIMARY} disabled={pending || !picked} onClick={() => run(() => addConsultantFromSubAccount(picked))}>{pending ? "Adding…" : "Add to roster"}</button>
       {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
     </div>
+  );
+}
+
+export function TokenForm({ id, hasToken, linked }: { id: string; hasToken: boolean; linked: boolean }) {
+  const { pending, msg, run } = useAct();
+  const [token, setToken] = useState("");
+  return (
+    <div className="mt-3 rounded-md border border-[#1E2635] bg-[#0F1522] p-3">
+      <div className="text-[11px] uppercase tracking-wide text-[#64748B]">GHL sub-account token</div>
+      <p className="mt-1 text-[11px] text-[#8B95A7]">
+        {hasToken ? "A token is on file. Paste a new one to replace it." : "No token yet. In this consultant's sub-account: Settings → Private Integrations → create one with Contacts, Conversations, Conversation Messages, Opportunities and Calendar Events."}
+        {!linked && " Link the sub-account first."}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="pit-…" className={`${INPUT} max-w-md`} disabled={!linked} />
+        <button className={PRIMARY} disabled={pending || !token.trim() || !linked} onClick={() => run(async () => { const r = await setConsultantToken(id, token); if (r.ok) setToken(""); return r; })}>{hasToken ? "Replace token" : "Save token"}</button>
+        {hasToken && <button className="rounded-md border border-[#2A3447] px-2.5 py-1.5 text-xs text-[#C3CCDB] hover:bg-[#161D2B] disabled:opacity-50" disabled={pending} onClick={() => run(() => setConsultantToken(id, ""))}>Remove</button>}
+        {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+export function DeleteButton({ id, name }: { id: string; name: string }) {
+  const { pending, msg, run } = useAct();
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button className="rounded-md border border-red-900/60 px-2.5 py-1.5 text-xs text-red-300 hover:bg-red-950/40 disabled:opacity-50" disabled={pending}
+        onClick={() => { if (window.confirm(`Remove ${name} from the roster?`)) run(() => deleteConsultant(id)); }}>
+        {pending ? "Removing…" : "Remove from roster"}
+      </button>
+      {msg && <span className="text-xs text-[#C3CCDB]">{msg}</span>}
+    </span>
   );
 }
 

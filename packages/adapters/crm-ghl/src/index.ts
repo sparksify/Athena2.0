@@ -22,7 +22,8 @@ function presetLocationToken(locationId: string): string | null {
   return null;
 }
 
-export async function locationBearer(opts: { apiKey: string; companyId?: string; locationId: string; fetchImpl?: typeof fetch }): Promise<string> {
+export async function locationBearer(opts: { apiKey: string; companyId?: string; locationId: string; token?: string | null; fetchImpl?: typeof fetch }): Promise<string> {
+  if (opts.token) return opts.token;
   const preset = presetLocationToken(opts.locationId);
   if (preset) return preset;
   if (!opts.companyId) return opts.apiKey;
@@ -58,6 +59,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     private readonly pipelineRef = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly companyId = process.env.GHL_COMPANY_ID,
+    private readonly locationToken: string | null = null,
   ) {}
 
   /** The mirror needs the key and a pipeline; the location comes per consultant (or GHL_LOCATION_ID as the default). */
@@ -65,9 +67,9 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return Boolean(process.env.GHL_API_KEY && (process.env.GHL_PIPELINE_ID || process.env.GHL_PIPELINE_NAME));
   }
 
-  /** Same credentials, a different sub-account. */
-  forLocation(locationId: string): GhlCrmAdapter {
-    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl, this.companyId);
+  /** A different sub-account; `token` is that sub-account's own private-integration token when one is on file. */
+  forLocation(locationId: string, token: string | null = null): GhlCrmAdapter {
+    return new GhlCrmAdapter(this.apiKey, locationId, this.pipelineRef, this.fetchImpl, this.companyId, token);
   }
 
   /**
@@ -301,7 +303,7 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
   }
 
   private async headers() {
-    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, fetchImpl: this.fetchImpl });
+    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
     return { authorization: `Bearer ${token}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
   }
 }
@@ -341,15 +343,18 @@ const envScope = () => (process.env.GHL_LOCATION_IDS ?? "").split(",").map((x) =
  * fans out and merges. DND anywhere counts; opportunities and messages are
  * kept from every account, tagged with the account name.
  */
+export interface ScopeEntry { id: string; token?: string | null }
+export interface AgencyLocation { id: string; name: string | null; token?: string | null }
+
 export class GhlAgencyReader implements CrmReader {
   readonly name = "ghl";
-  private locations: { id: string; name: string | null }[] | null = null;
+  private locations: AgencyLocation[] | null = null;
 
   constructor(
     private readonly apiKey = process.env.GHL_API_KEY,
     private readonly companyId = process.env.GHL_COMPANY_ID,
     private readonly fetchImpl: typeof fetch = fetch,
-    preset?: { id: string; name: string | null }[],
+    preset?: AgencyLocation[],
   ) {
     if (preset) this.locations = preset;
   }
@@ -361,11 +366,14 @@ export class GhlAgencyReader implements CrmReader {
    * a lookup across all of them per candidate is not viable. When nothing in
    * the scope matches, every sub-account is used and `scope` says so.
    */
-  static async scoped(extra: string[] = [], opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<GhlAgencyReader & { scope: "scoped" | "all"; total: number }> {
+  static async scoped(extra: (string | ScopeEntry)[] = [], opts: { apiKey?: string; companyId?: string; fetchImpl?: typeof fetch } = {}): Promise<GhlAgencyReader & { scope: "scoped" | "all"; total: number }> {
     const all = await GhlCrmAdapter.listLocations({ ...opts, scope: [] });
-    const wanted = new Set([...envScope(), ...extra].map(norm));
-    const picked = wanted.size ? all.filter((l) => wanted.has(norm(l.id)) || (l.name != null && wanted.has(norm(l.name)))) : [];
-    const reader = new GhlAgencyReader(opts.apiKey, opts.companyId, opts.fetchImpl, picked.length ? picked : all);
+    const entries = extra.map((e) => (typeof e === "string" ? { id: e } : e));
+    const tokens = new Map(entries.filter((e) => e.token).map((e) => [norm(e.id), e.token!]));
+    const wanted = new Set([...envScope(), ...entries.map((e) => e.id)].map(norm));
+    const withTokens = all.map((l) => ({ ...l, token: tokens.get(norm(l.id)) ?? null }));
+    const picked = wanted.size ? withTokens.filter((l) => wanted.has(norm(l.id)) || (l.name != null && wanted.has(norm(l.name)))) : [];
+    const reader = new GhlAgencyReader(opts.apiKey, opts.companyId, opts.fetchImpl, picked.length ? picked : withTokens);
     return Object.assign(reader, { scope: picked.length ? ("scoped" as const) : ("all" as const), total: all.length });
   }
 
@@ -377,10 +385,10 @@ export class GhlAgencyReader implements CrmReader {
   async lookupContact(query: { email?: string | null; phone?: string | null }): Promise<CrmContactHistory | null> {
     const locations = await this.listLocations();
     if (!locations.length) throw new Error("GHL: no sub-accounts configured (set GHL_COMPANY_ID, GHL_LOCATION_IDS or GHL_LOCATION_ID)");
-    const found: { loc: { id: string; name: string | null }; h: CrmContactHistory }[] = [];
+    const found: { loc: AgencyLocation; h: CrmContactHistory }[] = [];
     for (const loc of locations) {
       try {
-        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl, this.companyId).lookupContact(query);
+        const h = await new GhlCrmAdapter(this.apiKey, loc.id, undefined, this.fetchImpl, this.companyId, loc.token ?? null).lookupContact(query);
         if (h) found.push({ loc, h });
       } catch (err) {
         // one broken sub-account must not hide the others

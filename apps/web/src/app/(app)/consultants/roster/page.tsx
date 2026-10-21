@@ -3,7 +3,7 @@ import { getDb } from "@athena/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
 import { GhlCrmAdapter } from "@athena/crm-ghl";
-import { AddFromSubAccountForm, ConsultantForm, PersonaForm, StatusButton, SyncSubAccountsButton } from "./forms";
+import { AddFromSubAccountForm, ConsultantForm, DeleteButton, PersonaForm, StatusButton, SyncSubAccountsButton, TokenForm } from "./forms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Consultant roster — Athena" };
@@ -12,7 +12,7 @@ const rows = <T,>(r: unknown): T[] => (Array.isArray(r) ? (r as T[]) : ((r as { 
 
 export interface RosterRow {
   id: string; name: string; email: string | null; phone: string | null; timezone: string; specialties: string[]; territories: string[];
-  status: "active" | "paused"; max_load: number; user_id: string | null; ghl_ref: string | null; avatar_slug: string | null; active_load: number;
+  status: "active" | "paused"; max_load: number; user_id: string | null; ghl_ref: string | null; avatar_slug: string | null; active_load: number; has_token: boolean;
 }
 export interface PersonaRow { id: string; name: string; address: string | null; signature_html: string; active: boolean; avatar_slug: string | null; handoffs: number }
 export interface UserOption { id: string; email: string; full_name: string | null }
@@ -28,7 +28,8 @@ export default async function RosterPage() {
   const orgId = me.org_id as string;
   const [consultants, personas, users] = await Promise.all([
     rows<RosterRow>(await db.execute(sql`
-      select c.*, (select count(*)::int from assignment a where a.consultant_id = c.id and a.status in ('offered','accepted')) as active_load
+      select c.*, (select count(*)::int from assignment a where a.consultant_id = c.id and a.status in ('offered','accepted')) as active_load,
+        exists (select 1 from consultant_secret s where s.consultant_id = c.id and s.ghl_token is not null) as has_token
       from consultant c where c.org_id = ${orgId} order by c.status, c.name`)),
     rows<PersonaRow>(await db.execute(sql`
       select p.id, p.name, p.address, p.signature_html, p.active, p.avatar_slug,
@@ -62,14 +63,14 @@ export default async function RosterPage() {
           <tbody>
             {consultants.map((c) => (
               <tr key={c.id} className="border-t border-[#1E2635] align-top">
-                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL sub-account linked</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
+                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "token set" : <span className="text-amber-300">no token</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.email ?? <span className="text-red-300">no email</span>}<br />{c.phone ?? <span className="text-amber-300">no phone (no SMS nudges)</span>}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.specialties.join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.territories.join(", ") || "national"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.active_load} / {c.max_load}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{users.find((u) => u.id === c.user_id)?.email ?? <span className="text-[#64748B]">not linked</span>}</td>
                 <td className="px-3 py-2"><StatusButton id={c.id} status={c.status} /></td>
-                <td className="px-3 py-2"><details><summary className="cursor-pointer text-indigo-300">edit</summary><div className="mt-2"><ConsultantForm row={c} users={users} /></div></details></td>
+                <td className="px-3 py-2"><details><summary className="cursor-pointer text-indigo-300">edit</summary><div className="mt-2"><ConsultantForm row={c} users={users} /><TokenForm id={c.id} hasToken={c.has_token} linked={Boolean(c.ghl_ref)} /><div className="mt-3"><DeleteButton id={c.id} name={c.name} /></div></div></details></td>
               </tr>
             ))}
           </tbody>

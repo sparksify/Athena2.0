@@ -154,9 +154,11 @@ export const CRM_JOB_TYPE = "crm.lookup";
  * own sub-accounts. Callers add GHL_LOCATION_IDS (the central accounts that
  * hold lead history) through the adapter.
  */
-export async function crmLookupScope(db: EmitTx, orgId?: string): Promise<string[]> {
-  return rows<{ ghl_ref: string }>(await db.execute(sql`
-    select distinct ghl_ref from consultant where status = 'active' and ghl_ref is not null ${orgId ? sql`and org_id = ${orgId}` : sql``}`)).map((r) => r.ghl_ref);
+export async function crmLookupScope(db: EmitTx, orgId?: string): Promise<{ id: string; token: string | null }[]> {
+  return rows<{ ghl_ref: string; ghl_token: string | null }>(await db.execute(sql`
+    select c.ghl_ref, s.ghl_token from consultant c left join consultant_secret s on s.consultant_id = c.id
+    where c.status = 'active' and c.ghl_ref is not null ${orgId ? sql`and c.org_id = ${orgId}` : sql``}`))
+    .map((r) => ({ id: r.ghl_ref, token: r.ghl_token }));
 }
 
 /** Queue a lookup for every candidate that has never been checked (or everyone with `force`). */

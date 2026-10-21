@@ -16,6 +16,7 @@ export class GhlSmsProvider implements SmsProvider {
     private readonly locationId = process.env.GHL_LOCATION_ID,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly companyId = process.env.GHL_COMPANY_ID,
+    private readonly locationToken: string | null = null,
   ) {}
 
   /** Needs the key; the sub-account comes per consultant (GHL_LOCATION_ID is the default). */
@@ -23,8 +24,8 @@ export class GhlSmsProvider implements SmsProvider {
     return Boolean(process.env.GHL_API_KEY);
   }
 
-  forLocation(locationId: string): GhlSmsProvider {
-    return new GhlSmsProvider(this.apiKey, locationId, this.fetchImpl, this.companyId);
+  forLocation(locationId: string, token: string | null = null): GhlSmsProvider {
+    return new GhlSmsProvider(this.apiKey, locationId, this.fetchImpl, this.companyId, token);
   }
 
   async sendSms(msg: { to: string; body: string }): Promise<{ providerMessageId: string }> {
@@ -53,7 +54,7 @@ export class GhlSmsProvider implements SmsProvider {
   }
 
   private async headers() {
-    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, fetchImpl: this.fetchImpl });
+    const token = await locationBearer({ apiKey: this.apiKey!, companyId: this.companyId, locationId: this.locationId!, token: this.locationToken, fetchImpl: this.fetchImpl });
     return { authorization: `Bearer ${token}`, version: VERSION, "content-type": "application/json", accept: "application/json" };
   }
 }

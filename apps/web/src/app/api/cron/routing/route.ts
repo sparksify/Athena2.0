@@ -26,10 +26,10 @@ export async function GET(req: Request) {
   const drained = await drainRoutingJobs(db, {
     llm: new LlmGateway(new AnthropicProvider(), db),
     email: GmailProvider.configured() ? new GmailProvider() : null,
-    crm: GhlCrmAdapter.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!) : null) : null,
+    crm: GhlCrmAdapter.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlCrmAdapter().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null,
     appUrl,
   }, { limit: 50 });
-  const tick = await runAccountabilityTick(db, GhlSmsProvider.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!) : null) : null, {
+  const tick = await runAccountabilityTick(db, GhlSmsProvider.configured() ? (c) => (c.ghlRef || process.env.GHL_LOCATION_ID ? new GhlSmsProvider().forLocation(c.ghlRef ?? process.env.GHL_LOCATION_ID!, c.ghlToken) : null) : null, {
     managerPhone: process.env.MANAGER_SMS_TO ?? null,
   });
   return NextResponse.json({ drained, tick });

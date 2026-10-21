@@ -65,7 +65,7 @@ export { takeBackAssignment } from "./accountability/take-back";
 export { handleCalendarEvent, type CalendarEvent, type AppointmentResult } from "./accountability/appointments";
 export { DISPOSITION_CODES, parseDispositionReply, recordDisposition, handleInboundSms, type DispositionCode, type InboundSmsResult } from "./accountability/dispositions";
 export { syncOpportunity, applyCrmStage } from "./accountability/crm";
-export { drainRoutingJobs, ROUTING_JOB_TYPES, type DrainDeps, type DrainSummary } from "./routing/drain";
+export { drainRoutingJobs, ROUTING_JOB_TYPES, type ConsultantRef, type DrainDeps, type DrainSummary } from "./routing/drain";
 export { loadBoard, slaFor, WEEKLY_CONSULT_TARGET, type Board, type BoardConsultant, type BoardLead, type BoardAppointment, type SlaState } from "./routing/board";
 // Enrichment
 export { enrichFromCrm, enqueueCrmLookups, drainCrmLookups, crmLookupScope, CRM_JOB_TYPE, CRM_ATTRIBUTE_KEYS, type CrmEnrichResult } from "./ingest/crm-enrich";

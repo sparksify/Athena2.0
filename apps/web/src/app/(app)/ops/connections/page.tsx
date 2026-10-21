@@ -74,11 +74,13 @@ async function checkGhl(orgId?: string): Promise<Check[]> {
   }
   if (orgId && process.env.DATABASE_URL) {
     try {
-      const r = rows<{ matched: number; total: number }>(await getDb().execute(sql`
-        select count(*) filter (where ghl_ref is not null)::int as matched, count(*)::int as total from consultant where org_id = ${orgId} and status = 'active'`));
-      const { matched = 0, total = 0 } = r[0] ?? {};
-      out.push({ name: "Consultants matched to sub-accounts", status: matched === total && total > 0 ? "ok" : matched ? "warn" : "fail", detail: `${matched} of ${total} active consultants have a sub-account`,
-        next: matched === total ? undefined : "Roster → “Match consultants to GHL sub-accounts”, then set any leftovers by hand." });
+      const r = rows<{ matched: number; total: number; tokens: number }>(await getDb().execute(sql`
+        select count(*) filter (where c.ghl_ref is not null)::int as matched, count(*)::int as total,
+          count(*) filter (where s.ghl_token is not null)::int as tokens
+        from consultant c left join consultant_secret s on s.consultant_id = c.id where c.org_id = ${orgId} and c.status = 'active'`));
+      const { matched = 0, total = 0, tokens = 0 } = r[0] ?? {};
+      out.push({ name: "Consultants matched to sub-accounts", status: matched === total && total > 0 ? "ok" : matched ? "warn" : "fail", detail: `${matched} of ${total} active consultants have a sub-account · ${tokens} with their own token`,
+        next: matched === total ? undefined : "Roster → “Sync from GHL”, then pick any leftovers from the sub-account list." });
     } catch (e) { out.push({ name: "Consultants matched to sub-accounts", status: "fail", detail: msg(e) }); }
   }
   const ref = process.env.GHL_PIPELINE_ID ?? process.env.GHL_PIPELINE_NAME;

@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
-import { consultant, personaMailbox } from "@athena/db/schema";
+import { appointment, assignment, consultant, consultantSecret, opportunity, personaMailbox } from "@athena/db/schema";
 import {
+  emit,
   acceptAssignment, declineAssignment, recordDisposition, recordFirstTouch, routeCandidate, takeBackAssignment,
   type DispositionCode, type TouchChannel,
 } from "@athena/core";
@@ -153,6 +154,51 @@ export async function addConsultantFromSubAccount(locationId: string): Promise<A
   }
   revalidatePath("/consultants/roster"); revalidatePath("/consultants");
   return { ok: true, detail: existing ? `${name} linked to the sub-account.` : `${name} added${details?.email ? ` (${details.email})` : ""}. Set their mobile if GHL had none.` };
+}
+
+/** Store (or clear) the consultant's own GHL sub-account token. Never echoed back; the roster only shows whether one is set. */
+export async function setConsultantToken(id: string, token: string): Promise<ActionResult> {
+  const who = await actor(MANAGER_ROLES);
+  if ("error" in who) return { ok: false, error: who.error };
+  const value = token.trim() || null;
+  const db = getDb();
+  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef }).from(consultant).where(and(eq(consultant.id, id), eq(consultant.orgId, who.orgId))).limit(1);
+  if (!row) return { ok: false, error: "Consultant not found." };
+  if (value && !row.ghlRef) return { ok: false, error: "Link the GHL sub-account first; the token belongs to it." };
+  await db.insert(consultantSecret).values({ consultantId: id, orgId: who.orgId, ghlToken: value, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: consultantSecret.consultantId, set: { ghlToken: value, updatedAt: new Date() } });
+  revalidatePath("/consultants/roster"); revalidatePath("/ops/connections");
+  return { ok: true, detail: value ? "Token saved. Lookups, texts and the pipeline mirror for this consultant now use it." : "Token removed." };
+}
+
+/**
+ * Remove a consultant who never received work. One with assignments,
+ * opportunities or appointments keeps their history and is paused instead.
+ */
+export async function deleteConsultant(id: string): Promise<ActionResult> {
+  const who = await actor(MANAGER_ROLES);
+  if ("error" in who) return { ok: false, error: who.error };
+  const db = getDb();
+  const [row] = await db.select({ id: consultant.id, name: consultant.name }).from(consultant).where(and(eq(consultant.id, id), eq(consultant.orgId, who.orgId))).limit(1);
+  if (!row) return { ok: false, error: "Consultant not found." };
+  const [[a], [o], [ap]] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int` }).from(assignment).where(eq(assignment.consultantId, id)),
+    db.select({ n: sql<number>`count(*)::int` }).from(opportunity).where(eq(opportunity.consultantId, id)),
+    db.select({ n: sql<number>`count(*)::int` }).from(appointment).where(eq(appointment.consultantId, id)),
+  ]);
+  const history = (a?.n ?? 0) + (o?.n ?? 0) + (ap?.n ?? 0);
+  if (history > 0) {
+    await db.update(consultant).set({ status: "paused" }).where(eq(consultant.id, id));
+    revalidatePath("/consultants/roster"); revalidatePath("/consultants");
+    return { ok: false, error: `${row.name} has ${history} assignments, opportunities or appointments on record, so the row is kept and paused instead of deleted.` };
+  }
+  await db.transaction(async (tx) => {
+    await tx.delete(consultantSecret).where(eq(consultantSecret.consultantId, id));
+    await tx.delete(consultant).where(eq(consultant.id, id));
+    await emit(tx, { orgId: who.orgId, type: "consultant.removed", entityType: "consultant", entityId: id, actorType: "user", actorId: who.userId, payload: { name: row.name } });
+  });
+  revalidatePath("/consultants/roster"); revalidatePath("/consultants");
+  return { ok: true, detail: `${row.name} removed.` };
 }
 
 export async function setConsultantStatus(id: string, status: "active" | "paused"): Promise<ActionResult> {

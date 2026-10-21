@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { SmsProvider } from "@athena/contracts";
-import { appointment, assignment, candidate, consultant as consultantTable, consultantNudge, costRecord } from "@athena/db/schema";
+import { appointment, assignment, candidate, consultant as consultantTable, consultantNudge, consultantSecret, costRecord } from "@athena/db/schema";
 import { emit, type EmitTx } from "../events/emit";
 import { rows } from "../db-rows";
 import { NUDGE_LADDER, TAKE_BACK_AFTER_MS, nudgeText, type NudgeSubject } from "./ladder";
@@ -23,7 +23,7 @@ export interface TickSummary {
  * appointments that have ended without a disposition (clock from ends_at).
  */
 /** A fixed provider, or one chosen per consultant (e.g. their own CRM sub-account). */
-export type SmsResolver = SmsProvider | null | ((consultant: { id: string; ghlRef: string | null }) => SmsProvider | null);
+export type SmsResolver = SmsProvider | null | ((consultant: { id: string; ghlRef: string | null; ghlToken: string | null }) => SmsProvider | null);
 
 export async function runAccountabilityTick(
   db: EmitTx,
@@ -100,7 +100,8 @@ async function sendNudge(
 ): Promise<boolean> {
   const [cons] = await db.select().from(consultantTable).where(eq(consultantTable.id, n.consultantId)).limit(1);
   if (!cons) return false;
-  const sms = typeof smsResolver === "function" ? smsResolver({ id: cons.id, ghlRef: cons.ghlRef }) : smsResolver;
+  const [secret] = await db.select({ ghlToken: consultantSecret.ghlToken }).from(consultantSecret).where(eq(consultantSecret.consultantId, cons.id)).limit(1);
+  const sms = typeof smsResolver === "function" ? smsResolver({ id: cons.id, ghlRef: cons.ghlRef, ghlToken: secret?.ghlToken ?? null }) : smsResolver;
   const subject: NudgeSubject = n.assignmentId ? "first_touch" : "disposition";
   let candidateName = "the candidate";
   let anchor = n.dueAt;

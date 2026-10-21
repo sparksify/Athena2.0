@@ -516,6 +516,14 @@ export const consultant = pgTable(
   (t) => [uniqueIndex("consultant_org_name_idx").on(t.orgId, t.name), index("consultant_user_idx2").on(t.userId)],
 );
 
+/** Service-connection only (no RLS policies, no grants): the consultant's own GHL sub-account token. */
+export const consultantSecret = pgTable("consultant_secret", {
+  consultantId: uuid("consultant_id").primaryKey().references(() => consultant.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id),
+  ghlToken: text("ghl_token"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const ASSIGNMENT_STATUSES = ["offered", "accepted", "declined", "reassigned", "taken_back"] as const;
 
 export const assignment = pgTable(

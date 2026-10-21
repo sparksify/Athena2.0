@@ -46,6 +46,7 @@ describe("migrations", () => {
       "candidate_source_link",
       "consultant",
       "consultant_nudge",
+      "consultant_secret",
       "conversation",
       "cost_record",
       "disposition",

@@ -1,11 +1,14 @@
 import { eq, inArray } from "drizzle-orm";
 import type { CrmSyncAdapter, EmailProvider } from "@athena/contracts";
-import { agentJob, consultant, opportunity } from "@athena/db/schema";
+import { agentJob, consultant, consultantSecret, opportunity } from "@athena/db/schema";
 import { syncOpportunity } from "../accountability/crm";
 import type { EmitTx } from "../events/emit";
 import type { LlmGateway } from "../llm/gateway";
 import { routeCandidate, type RoutingTrigger } from "./assign";
 import { sendWarmIntro } from "./intro";
+
+/** What a per-consultant adapter needs: the sub-account and, when on file, its own token. */
+export interface ConsultantRef { id: string; ghlRef: string | null; ghlToken: string | null }
 
 export const ROUTING_JOB_TYPES = ["routing.assign", "routing.intro", "crm.sync"] as const;
 
@@ -14,7 +17,7 @@ export interface DrainDeps {
   /** Persona sender; null until the Gmail service account is configured (intros stay queued). */
   email: EmailProvider | null;
   /** GHL mirror; null until configured (sync jobs stay queued). A function picks the consultant's own sub-account. */
-  crm: CrmSyncAdapter | null | ((consultant: { id: string; ghlRef: string | null }) => CrmSyncAdapter | null);
+  crm: CrmSyncAdapter | null | ((consultant: ConsultantRef) => CrmSyncAdapter | null);
   appUrl: string;
 }
 
@@ -70,10 +73,12 @@ export async function drainRoutingJobs(db: EmitTx, deps: DrainDeps, opts: { limi
 
 async function resolveCrm(
   db: EmitTx,
-  pick: (c: { id: string; ghlRef: string | null }) => CrmSyncAdapter | null,
+  pick: (c: ConsultantRef) => CrmSyncAdapter | null,
   opportunityId: string,
 ): Promise<CrmSyncAdapter | null> {
-  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef }).from(consultant)
-    .innerJoin(opportunity, eq(opportunity.consultantId, consultant.id)).where(eq(opportunity.id, opportunityId)).limit(1);
-  return row ? pick(row) : null;
+  const [row] = await db.select({ id: consultant.id, ghlRef: consultant.ghlRef, ghlToken: consultantSecret.ghlToken }).from(consultant)
+    .innerJoin(opportunity, eq(opportunity.consultantId, consultant.id))
+    .leftJoin(consultantSecret, eq(consultantSecret.consultantId, consultant.id))
+    .where(eq(opportunity.id, opportunityId)).limit(1);
+  return row ? pick({ id: row.id, ghlRef: row.ghlRef, ghlToken: row.ghlToken ?? null }) : null;
 }
