@@ -12,7 +12,19 @@ interface Pipeline { id: string; name: string; stages: { id: string; name: strin
  * assumed to be a sub-account token and is used as-is.
  */
 const locationTokens = new Map<string, { token: string; expiresAt: number }>();
+
+/** GHL_LOCATION_TOKENS="locId:token,locId:token" — a private-integration token issued inside a sub-account; wins over the exchange. */
+function presetLocationToken(locationId: string): string | null {
+  for (const pair of (process.env.GHL_LOCATION_TOKENS ?? "").split(",")) {
+    const i = pair.indexOf(":");
+    if (i > 0 && pair.slice(0, i).trim() === locationId) return pair.slice(i + 1).trim() || null;
+  }
+  return null;
+}
+
 export async function locationBearer(opts: { apiKey: string; companyId?: string; locationId: string; fetchImpl?: typeof fetch }): Promise<string> {
+  const preset = presetLocationToken(opts.locationId);
+  if (preset) return preset;
   if (!opts.companyId) return opts.apiKey;
   const key = `${opts.companyId}:${opts.locationId}`;
   const hit = locationTokens.get(key);
@@ -23,7 +35,7 @@ export async function locationBearer(opts: { apiKey: string; companyId?: string;
     headers: { authorization: `Bearer ${opts.apiKey}`, version: VERSION, "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
     body: new URLSearchParams({ companyId: opts.companyId, locationId: opts.locationId }).toString(),
   });
-  if (!res.ok) throw new Error(`ghl location token for ${opts.locationId} failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`ghl location token for ${opts.locationId} failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 120)} — enable the OAuth scope on the agency integration, or set GHL_LOCATION_TOKENS`);
   const json = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!json.access_token) throw new Error("ghl location token response had no access_token");
   locationTokens.set(key, { token: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 86_400) * 1000 });

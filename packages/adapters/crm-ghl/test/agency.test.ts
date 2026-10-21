@@ -94,4 +94,18 @@ describe("one CRM reader over every consultant sub-account", () => {
     expect(exchanges).toBe(1);
     expect(bearers.every((b) => b === "Bearer loc-token")).toBe(true);
   });
+
+  it("prefers a sub-account token from GHL_LOCATION_TOKENS over the exchange", async () => {
+    process.env.GHL_LOCATION_TOKENS = "L9:pit-nine, L1:pit-one";
+    const bearers: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith("/oauth/locationToken")) throw new Error("exchange must not be called");
+      bearers.push(String((init?.headers as Record<string, string>).authorization));
+      return Response.json({ contacts: [] });
+    }) as typeof fetch;
+    try {
+      await new GhlAgencyReader("agency-key", "agency", fetchImpl, [{ id: "L1", name: "Rob" }]).lookupContact({ email: "x@example.com" });
+    } finally { delete process.env.GHL_LOCATION_TOKENS; }
+    expect(bearers).toEqual(["Bearer pit-one"]);
+  });
 });
