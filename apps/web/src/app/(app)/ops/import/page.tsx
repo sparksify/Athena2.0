@@ -1,6 +1,7 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { SOURCE_TYPES } from "@athena/core";
 import { ImportForm } from "./import-form";
+import { DncForm } from "./dnc-form";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -9,6 +10,7 @@ export default async function ImportPage() {
   const supabase = await supabaseServer();
   const dbConfigured = Boolean(process.env.DATABASE_URL);
 
+  const { count: suppressed } = await supabase.from("suppression").select("id", { count: "exact", head: true });
   const { data: batches } = await supabase
     .from("import_batch")
     .select("id, filename, source_type, label, status, report, started_at, finished_at")
@@ -35,6 +37,8 @@ export default async function ImportPage() {
       )}
 
       <ImportForm disabled={!dbConfigured} sourceTypes={SOURCE_TYPES.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))} />
+
+      <DncForm disabled={!dbConfigured} suppressed={suppressed ?? 0} />
 
       <section className="mt-10">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">

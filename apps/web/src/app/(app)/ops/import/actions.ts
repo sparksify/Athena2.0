@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@athena/db";
-import { batchReport, crmLookupScope, drainCrmLookups, enqueueResearch, importFile, parseCsv, PARSERS, scoreCandidates } from "@athena/core";
+import { batchReport, crmLookupScope, drainCrmLookups, enqueueResearch, importDoNotContact, importFile, parseCsv, PARSERS, scoreCandidates, type DncImportSummary } from "@athena/core";
 import { GhlAgencyReader, GhlCrmAdapter } from "@athena/crm-ghl";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ghlAgency } from "@/lib/ghl";
@@ -81,4 +81,23 @@ export async function runImport(formData: FormData): Promise<ImportActionResult>
   revalidatePath("/ops/import");
   revalidatePath("/");
   return { ok: true, report, scored, enriched };
+}
+
+export interface DncActionResult { ok: boolean; error?: string; summary?: DncImportSummary }
+
+/** Upload a do-not-contact list: every email and phone in the file goes into suppression. */
+export async function uploadDoNotContact(formData: FormData): Promise<DncActionResult> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  const { data: me } = await supabase.from("user").select("role, org_id").eq("id", user.id).single();
+  if (!me || !IMPORT_ROLES.has(me.role)) return { ok: false, error: `Role '${me?.role ?? "none"}' may not import.` };
+  if (!process.env.DATABASE_URL) return { ok: false, error: "DATABASE_URL is not configured on this deployment." };
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a file." };
+  if (file.size > 10 * 1024 * 1024) return { ok: false, error: "Files over 10 MB: split them." };
+  const reason = String(formData.get("reason") ?? "").trim() || "do-not-contact list";
+  const summary = await importDoNotContact(getDb(), { orgId: me.org_id as string, text: await file.text(), reason, source: `dnc_upload:${file.name}` });
+  revalidatePath("/ops/import"); revalidatePath("/outreach/campaigns");
+  return { ok: true, summary };
 }

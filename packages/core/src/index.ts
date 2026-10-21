@@ -33,6 +33,7 @@ export { SOURCE_TYPES, SOURCE_QUALITY, sourceTypeLabel, type SourceTypeValue } f
 export { parseCsv } from "./ingest/csv";
 export type { ParsedRecord, SourceParser } from "./ingest/types";
 export { addSuppression, isSuppressed, type AddSuppressionArgs } from "./outreach/suppress";
+export { importDoNotContact, extractContacts, type DncImportSummary } from "./outreach/dnc";
 export { evaluateSendGates, windowOpen, localParts, type SendWindow, type GateResult } from "./outreach/gates";
 export { sendApprovedDraft, type SendOutcome } from "./outreach/send";
 export { handleEmailWebhook, type EmailWebhookEvent, type WebhookResult } from "./outreach/webhooks";
