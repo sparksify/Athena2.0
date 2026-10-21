@@ -158,7 +158,7 @@ export default async function ConnectionsPage() {
     envFlag("Public URL", "APP_URL", "Links in intros fall back to the Vercel URL; set when a custom domain exists.", true),
   ];
 
-  console.info("[connections]", JSON.stringify(checks.map((c) => ({ n: c.name, s: c.status, d: c.detail }))));
+  console.info("[connections]", JSON.stringify(checks.map((c) => ({ n: c.name, s: c.status, d: c.detail.slice(0, 160) }))));
 
   const tone: Record<Status, string> = { ok: "text-green-400", warn: "text-amber-400", fail: "text-red-400", off: "text-[#64748B]" };
   const label: Record<Status, string> = { ok: "OK", warn: "Attention", fail: "Failing", off: "Not yet" };

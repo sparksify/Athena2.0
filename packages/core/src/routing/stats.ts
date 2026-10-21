@@ -18,8 +18,9 @@ interface StatRow {
  * both the routing reward loop and the Consultant Command board.
  */
 export async function consultantStats(db: EmitTx, orgId: string, now = new Date()): Promise<Map<string, ConsultantStats>> {
-  const since = new Date(now.getTime() - 90 * 86_400_000);
-  const since30 = new Date(now.getTime() - 30 * 86_400_000);
+  // Raw sql templates must carry ISO strings: Drizzle's postgres-js driver passes Date objects through unserialized.
+  const since = new Date(now.getTime() - 90 * 86_400_000).toISOString();
+  const since30 = new Date(now.getTime() - 30 * 86_400_000).toISOString();
   const weekStart = startOfWeek(now);
   const result = await db.execute(sql`
     with a as (
@@ -27,11 +28,11 @@ export async function consultantStats(db: EmitTx, orgId: string, now = new Date(
         count(*)::int as offered,
         count(*) filter (where status = 'accepted' or first_touch_at is not null)::int as accepted,
         count(*) filter (where status = 'declined')::int as declined,
-        count(*) filter (where status = 'taken_back' and ended_at >= ${since30})::int as take_backs_30d,
+        count(*) filter (where status = 'taken_back' and ended_at >= ${since30}::timestamptz)::int as take_backs_30d,
         percentile_cont(0.5) within group (order by extract(epoch from (first_touch_at - offered_at)) / 3600)
           filter (where first_touch_at is not null) as first_touch_median_hours
       from assignment
-      where org_id = ${orgId} and offered_at >= ${since}
+      where org_id = ${orgId} and offered_at >= ${since}::timestamptz
       group by consultant_id
     ),
     ap as (
@@ -53,7 +54,7 @@ export async function consultantStats(db: EmitTx, orgId: string, now = new Date(
       left join assignment asg on asg.id = (
         select id from assignment x where x.candidate_id = ap.candidate_id and x.consultant_id = ap.consultant_id
         order by offered_at desc limit 1)
-      where ap.org_id = ${orgId} and ap.starts_at >= ${since}
+      where ap.org_id = ${orgId} and ap.starts_at >= ${since}::timestamptz
       group by ap.consultant_id
     )
     select c.id as consultant_id,

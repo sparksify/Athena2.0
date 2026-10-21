@@ -35,7 +35,7 @@ export async function researchSpentToday(db: EmitTx, orgId: string, now = new Da
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const r = rows<{ usd: string | number | null }>(await db.execute(sql`
     select coalesce(sum(amount_usd), 0) as usd from cost_record
-    where org_id = ${orgId} and category = 'llm' and detail->>'purpose' = 'research' and created_at >= ${start}`));
+    where org_id = ${orgId} and category = 'llm' and detail->>'purpose' = 'research' and created_at >= ${start.toISOString()}::timestamptz`));
   return Number(r[0]?.usd ?? 0);
 }
 

@@ -87,12 +87,12 @@ export async function loadBoard(db: EmitTx, orgId: string, now = new Date()): Pr
            where a.candidate_id = ap.candidate_id order by a.offered_at desc limit 1) as agent
       from appointment ap join candidate cand on cand.id = ap.candidate_id join consultant c on c.id = ap.consultant_id
       where ap.org_id = ${orgId} and ap.kind = 'consultation' and ap.status = 'scheduled'
-        and ap.starts_at between ${new Date(now.getTime() - 3 * 86_400_000)} and ${new Date(now.getTime() + 7 * 86_400_000)}
+        and ap.starts_at between ${new Date(now.getTime() - 3 * 86_400_000).toISOString()}::timestamptz and ${new Date(now.getTime() + 7 * 86_400_000).toISOString()}::timestamptz
       order by ap.starts_at`)),
     rows<{ stage: OpportunityStage; n: number; value: number }>(await db.execute(sql`
       select stage, count(*)::int as n, coalesce(sum(value_usd), 0)::float as value from opportunity where org_id = ${orgId} group by stage`)),
     rows<{ assigned: number; touched: number; cq: number; consults: number; advancing: number; touch_median: number | null; cq_median: number | null; consult_median: number | null }>(await db.execute(sql`
-      with a as (select * from assignment where org_id = ${orgId} and offered_at >= ${new Date(now.getTime() - 90 * 86_400_000)}),
+      with a as (select * from assignment where org_id = ${orgId} and offered_at >= ${new Date(now.getTime() - 90 * 86_400_000).toISOString()}::timestamptz),
       t as (select a.id, a.candidate_id, a.offered_at, a.first_touch_at,
               (select min(coalesce(q.completed_at, q.created_at)) from questionnaire q where q.candidate_id = a.candidate_id and q.kind = 'cq_complete' and coalesce(q.completed_at, q.created_at) >= a.offered_at) as cq_at,
               (select min(ap.starts_at) from appointment ap join disposition d on d.appointment_id = ap.id

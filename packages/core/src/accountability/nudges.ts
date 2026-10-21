@@ -58,7 +58,7 @@ export async function runAccountabilityTick(
   const ended = rows<{ id: string; org_id: string; consultant_id: string; ends_at: string | Date }>(
     await db.execute(sql`select ap.id, ap.org_id, ap.consultant_id, ap.ends_at from appointment ap
       left join disposition d on d.appointment_id = ap.id
-      where ap.status = 'scheduled' and ap.ends_at <= ${now} and d.id is null ${args.orgId ? sql`and ap.org_id = ${args.orgId}` : sql``}`),
+      where ap.status = 'scheduled' and ap.ends_at <= ${now.toISOString()}::timestamptz and d.id is null ${args.orgId ? sql`and ap.org_id = ${args.orgId}` : sql``}`),
   );
   for (const ap of ended) {
     const endsAt = new Date(ap.ends_at);
