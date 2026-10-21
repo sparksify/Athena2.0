@@ -21,7 +21,7 @@ export async function consultantStats(db: EmitTx, orgId: string, now = new Date(
   // Raw sql templates must carry ISO strings: Drizzle's postgres-js driver passes Date objects through unserialized.
   const since = new Date(now.getTime() - 90 * 86_400_000).toISOString();
   const since30 = new Date(now.getTime() - 30 * 86_400_000).toISOString();
-  const weekStart = startOfWeek(now);
+  const weekStart = startOfWeek(now).toISOString();
   const result = await db.execute(sql`
     with a as (
       select consultant_id,
@@ -40,7 +40,7 @@ export async function consultantStats(db: EmitTx, orgId: string, now = new Date(
         count(*) filter (where ap.status = 'showed')::int as showed,
         count(*) filter (where ap.status = 'no_show')::int as no_show,
         count(*) filter (where ap.status = 'showed' and ap.kind = 'consultation' and d.id is not null
-                           and ap.starts_at >= ${weekStart})::int as consults_this_week,
+                           and ap.starts_at >= ${weekStart}::timestamptz)::int as consults_this_week,
         percentile_cont(0.5) within group (order by extract(epoch from (ap.starts_at - asg.offered_at)) / 3600)
           filter (where ap.status = 'showed' and ap.kind = 'consultation' and d.id is not null and asg.offered_at is not null)
           as speed_to_consult_median_hours,
