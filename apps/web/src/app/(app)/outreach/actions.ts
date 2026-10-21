@@ -59,3 +59,31 @@ export async function reject(draftId: string, reason: string, rewrite = true): P
   if (res.reason === "not_requested") return { ok: true, detail: "Rejected." };
   return { ok: true, detail: `Rejected; rewrite skipped (${res.reason}).` };
 }
+
+/** Approve several drafts at once; each one is still an individual, logged human approval. */
+export async function approveMany(draftIds: string[]): Promise<ReviewActionResult> {
+  const who = await reviewer();
+  if ("error" in who) return { ok: false, error: who.error };
+  const db = getDb();
+  let approved = 0, skipped = 0;
+  for (const draftId of draftIds.slice(0, 500)) {
+    const r = await approveDraft(db, { orgId: who.orgId, draftId, userId: who.userId });
+    if (r.ok) approved++; else skipped++;
+  }
+  revalidatePath("/outreach");
+  return { ok: true, detail: `${approved} approved${skipped ? `, ${skipped} skipped (no longer in draft)` : ""}.` };
+}
+
+/** Reject several drafts without a rewrite. */
+export async function rejectMany(draftIds: string[], reason: string): Promise<ReviewActionResult> {
+  const who = await reviewer();
+  if ("error" in who) return { ok: false, error: who.error };
+  const db = getDb();
+  let rejected = 0;
+  for (const draftId of draftIds.slice(0, 500)) {
+    const r = await rejectAndRewrite(db, new LlmGateway(new AnthropicProvider(), db), { orgId: who.orgId, draftId, userId: who.userId, reason: reason.trim() || "rejected in bulk review", rewrite: false });
+    if (r.ok) rejected++;
+  }
+  revalidatePath("/outreach");
+  return { ok: true, detail: `${rejected} rejected.` };
+}

@@ -254,11 +254,18 @@ export class GhlCrmAdapter implements CrmSyncAdapter, CrmReader {
     return pipeline;
   }
 
+  /**
+   * Order: the consultant's explicit choice; else the sub-account's pipeline
+   * named like GHL_DEFAULT_PIPELINE_NAME ("Pipeline", which nearly every
+   * FCC sub-account carries); else its only pipeline; else none.
+   */
   private async resolvePipeline(): Promise<{ pipeline: Pipeline | null; all: Pipeline[]; defaulted: boolean }> {
     const all = await this.allPipelines();
     const ref = this.pipelineRef ?? "";
     const found = ref ? all.find((p) => p.id === ref || norm(p.name) === norm(ref)) ?? null : null;
     if (found) return { pipeline: found, all, defaulted: false };
+    const byDefaultName = all.find((p) => norm(p.name) === norm(DEFAULT_PIPELINE_NAME()));
+    if (byDefaultName) return { pipeline: byDefaultName, all, defaulted: true };
     if (all.length === 1) return { pipeline: all[0]!, all, defaulted: true };
     return { pipeline: null, all, defaulted: false };
   }
@@ -444,6 +451,8 @@ export function parseGhlStageWebhook(payload: unknown): { externalRef: string; s
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+/** The pipeline name used when a consultant has not chosen one. */
+export const DEFAULT_PIPELINE_NAME = () => process.env.GHL_DEFAULT_PIPELINE_NAME ?? "Pipeline";
 const envScope = () => (process.env.GHL_LOCATION_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
 
 

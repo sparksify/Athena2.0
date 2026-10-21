@@ -29,6 +29,7 @@ export const appUser = pgTable(
       enum: ["super_admin", "fcc_admin", "manager", "consultant", "analyst", "read_only"],
     }).notNull().default("read_only"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("user_org_email_idx").on(t.orgId, t.email)],
 );

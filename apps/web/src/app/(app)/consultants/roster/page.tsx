@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@athena/db";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PersonAvatar, resolveAvatar } from "@/components/agent-avatar";
-import { GhlCrmAdapter } from "@athena/crm-ghl";
+import { DEFAULT_PIPELINE_NAME, GhlCrmAdapter } from "@athena/crm-ghl";
 import { ghlAgency } from "@/lib/ghl";
 import { AddFromSubAccountForm, ConsultantForm, DeleteButton, PersonaForm, PipelineSelect, StatusButton, SyncSubAccountsButton, TokenForm } from "./forms";
 
@@ -49,12 +49,15 @@ export default async function RosterPage() {
       pipelinesFor.set(c.id, { options: await adapter.listPipelines(), error: null });
     } catch (e) { pipelinesFor.set(c.id, { options: [], error: (e instanceof Error ? e.message : String(e)).slice(0, 120) }); }
   }));
+  const normName = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
   const pipelineLabel = (c: RosterRow) => {
     const p = pipelinesFor.get(c.id);
     if (!p || p.error) return null;
-    const chosen = c.ghl_pipeline ? p.options.find((o) => o.id === c.ghl_pipeline || o.name.toLowerCase() === c.ghl_pipeline!.toLowerCase()) : null;
+    const chosen = c.ghl_pipeline ? p.options.find((o) => o.id === c.ghl_pipeline || normName(o.name) === normName(c.ghl_pipeline!)) : null;
     if (chosen) return chosen.name;
-    if (!c.ghl_pipeline && p.options.length === 1) return p.options[0]!.name;
+    const byDefault = p.options.find((o) => normName(o.name) === normName(DEFAULT_PIPELINE_NAME()));
+    if (byDefault) return `${byDefault.name} (default)`;
+    if (p.options.length === 1) return `${p.options[0]!.name} (only one)`;
     return null;
   };
   const onRoster = new Set(consultants.map((c) => c.ghl_ref).filter(Boolean));
@@ -82,7 +85,11 @@ export default async function RosterPage() {
           <tbody>
             {consultants.map((c) => (
               <tr key={c.id} className="border-t border-[#1E2635] align-top">
-                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "own token" : agency ? "via Athena app" : <span className="text-amber-300">no token, app not connected</span>}{pipelineLabel(c) ? <span className="text-[#8B95A7]"> · {pipelineLabel(c)}</span> : <span className="text-amber-300"> · pipeline not chosen</span>}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}</span></span></td>
+                <td className="px-3 py-2"><span className="flex items-center gap-2"><PersonAvatar src={resolveAvatar(c.avatar_slug ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"))} alt={c.name} size={26} /><span><span className="block font-medium text-[#E7ECF3]">{c.name}</span>{c.ghl_ref ? <span className="block text-[11px] text-emerald-300">GHL linked · {c.has_token ? "own token" : agency ? "via Athena app" : <span className="text-amber-300">no token, app not connected</span>}{pipelineLabel(c) ? <span className="text-[#8B95A7]"> · {pipelineLabel(c)}</span> : null}</span> : <span className="block text-[11px] text-red-300">no GHL sub-account</span>}{c.ghl_ref && pipelinesFor.has(c.id) && !pipelineLabel(c) && (
+                  <span className="mt-1 block max-w-xs rounded border border-red-900/60 bg-red-950/40 px-2 py-1 text-[11px] text-red-300">
+                    {pipelinesFor.get(c.id)?.error ? `Could not read pipelines: ${pipelinesFor.get(c.id)!.error}` : `No pipeline named “${DEFAULT_PIPELINE_NAME()}” in this sub-account. Handoffs can’t be mirrored until one is chosen (edit → GHL pipeline).`}
+                  </span>
+                )}</span></span></td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.email ?? <span className="text-red-300">no email</span>}<br />{c.phone ?? <span className="text-amber-300">no phone (no SMS nudges)</span>}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.specialties.join(", ") || "—"}</td>
                 <td className="px-3 py-2 text-[#C3CCDB]">{c.territories.join(", ") || "national"}</td>

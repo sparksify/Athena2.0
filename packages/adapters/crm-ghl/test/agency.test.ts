@@ -140,4 +140,15 @@ describe("one CRM reader over every consultant sub-account", () => {
     }) as typeof fetch });
     expect(await reader.lookupContact({ email: "a@example.com" })).toBeNull();
   });
+
+  it("falls back to the pipeline named \"Pipeline\", then to a lone pipeline, before giving up", async () => {
+    const make = (pipelines: { id: string; name: string }[], ref?: string) => new GhlCrmAdapter({
+      apiKey: "k", locationId: "L1", pipelineRef: ref ?? null, companyId: null,
+      fetchImpl: (async () => Response.json({ pipelines: pipelines.map((p) => ({ ...p, stages: [] })) })) as typeof fetch,
+    });
+    expect(await make([{ id: "a", name: "Genesis Pipeline" }, { id: "b", name: "Pipeline" }]).checkPipeline()).toMatchObject({ matched: "Pipeline", defaulted: true });
+    expect(await make([{ id: "a", name: "FCC Production Pipeline" }]).checkPipeline()).toMatchObject({ matched: "FCC Production Pipeline", defaulted: true });
+    expect(await make([{ id: "a", name: "Genesis Pipeline" }, { id: "b", name: "Main Pipeline" }]).checkPipeline()).toMatchObject({ matched: null });
+    expect(await make([{ id: "a", name: "Genesis Pipeline" }, { id: "b", name: "Pipeline" }], "a").checkPipeline()).toMatchObject({ matched: "Genesis Pipeline", defaulted: false });
+  });
 });

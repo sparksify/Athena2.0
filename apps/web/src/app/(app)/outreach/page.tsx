@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { ReviewButtons } from "./review-buttons";
+import { BulkBar, DraftCheckbox, SelectionProvider } from "./selection";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Outreach — Athena" };
@@ -81,10 +82,12 @@ export default async function OutreachPage() {
         </div>
       </div>
 
+      <SelectionProvider>
       <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">
           Approval queue — {pendingDrafts?.length ?? 0} awaiting review
         </h2>
+        <BulkBar allIds={(pendingDrafts ?? []).map((d) => d.id)} />
         <div className="mt-3 space-y-4">
           {(pendingDrafts ?? []).map((d) => {
             const cand = one(d.candidate);
@@ -92,7 +95,9 @@ export default async function OutreachPage() {
             const camp = one(d.campaign);
             return (
               <article key={d.id} className="rounded-lg border border-[#1E2635] bg-[#0F1522] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start gap-3">
+                  <DraftCheckbox id={d.id} />
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-[#E7ECF3]">
                       {cand?.full_name ?? "Unknown"}{" "}
@@ -105,6 +110,7 @@ export default async function OutreachPage() {
                     {d.revision_of && (
                       <div className="mt-1 text-[11px] text-indigo-300">Rewrite · after note: “{noteFor.get(d.revision_of) ?? "—"}”</div>
                     )}
+                  </div>
                   </div>
                   <ReviewButtons draftId={d.id} />
                 </div>
@@ -124,6 +130,7 @@ export default async function OutreachPage() {
           )}
         </div>
       </section>
+      </SelectionProvider>
 
       <section className="mt-6 rounded-xl border border-[#1E2635] bg-[#121826] p-5">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#8B95A7]">Recent activity</h2>
