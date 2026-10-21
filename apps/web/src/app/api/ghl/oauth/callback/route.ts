@@ -30,8 +30,8 @@ export async function GET(req: Request) {
 
   try {
     const t = await exchangeGhlCode({ clientId, clientSecret, code, redirectUri: ghlRedirectUri() });
-    if (t.userType && t.userType.toLowerCase() !== "company") {
-      return back(`ghl=error&reason=${encodeURIComponent(`installed on a single sub-account (${t.userType}); install on the agency instead`)}`);
+    if ((t.userType && t.userType.toLowerCase() !== "company") || (!t.companyId && t.locationId)) {
+      return back(`ghl=error&reason=${encodeURIComponent(`GHL installed the app on one sub-account only (${t.locationId ?? t.userType}). Start the install from the agency and choose all sub-accounts.`)}`);
     }
     await saveGhlCredential(getDb(), {
       orgId: me.org_id as string, companyId: t.companyId, accessToken: t.accessToken, refreshToken: t.refreshToken,

@@ -65,7 +65,7 @@ export const GHL_APP_SCOPES = [
   "oauth.readonly", "oauth.write",
 ] as const;
 
-export interface GhlOAuthTokens { accessToken: string; refreshToken: string | null; expiresIn: number; scope: string | null; companyId: string | null; userType: string | null }
+export interface GhlOAuthTokens { accessToken: string; refreshToken: string | null; expiresIn: number; scope: string | null; companyId: string | null; locationId: string | null; userType: string | null }
 
 /** Where the installer is sent; GHL asks which agency to install on, then redirects back with ?code=. */
 export function ghlAuthorizeUrl(opts: { clientId: string; redirectUri: string; state: string; scopes?: readonly string[] }): string {
@@ -85,14 +85,28 @@ async function oauthToken(form: Record<string, string>, fetchImpl: typeof fetch 
     body: new URLSearchParams(form).toString(),
   });
   if (!res.ok) throw new Error(`ghl oauth token failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
-  const j = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; companyId?: string; userType?: string };
+  const j = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; companyId?: string; locationId?: string; userType?: string };
   if (!j.access_token) throw new Error("ghl oauth token response had no access_token");
-  return { accessToken: j.access_token, refreshToken: j.refresh_token ?? null, expiresIn: Number(j.expires_in ?? 86_399), scope: j.scope ?? null, companyId: j.companyId ?? null, userType: j.userType ?? null };
+  return { accessToken: j.access_token, refreshToken: j.refresh_token ?? null, expiresIn: Number(j.expires_in ?? 86_399), scope: j.scope ?? null, companyId: j.companyId ?? null, locationId: j.locationId ?? null, userType: j.userType ?? null };
 }
 
-/** Authorization code → agency tokens (user_type Company). */
-export function exchangeGhlCode(opts: { clientId: string; clientSecret: string; code: string; redirectUri: string; fetchImpl?: typeof fetch }): Promise<GhlOAuthTokens> {
-  return oauthToken({ client_id: opts.clientId, client_secret: opts.clientSecret, grant_type: "authorization_code", code: opts.code, user_type: "Company", redirect_uri: opts.redirectUri }, opts.fetchImpl);
+/**
+ * Authorization code → tokens. Asks for an agency (Company) token first,
+ * which is what an agency-wide install of a sub-account app yields; when
+ * GHL refuses, retries as a single-location install so the caller can say
+ * precisely what happened instead of failing blind.
+ */
+export async function exchangeGhlCode(opts: { clientId: string; clientSecret: string; code: string; redirectUri: string; fetchImpl?: typeof fetch }): Promise<GhlOAuthTokens> {
+  const base = { client_id: opts.clientId, client_secret: opts.clientSecret, grant_type: "authorization_code", code: opts.code, redirect_uri: opts.redirectUri };
+  try {
+    return await oauthToken({ ...base, user_type: "Company" }, opts.fetchImpl);
+  } catch (companyErr) {
+    try {
+      return await oauthToken({ ...base, user_type: "Location" }, opts.fetchImpl);
+    } catch {
+      throw companyErr;
+    }
+  }
 }
 
 /** Refresh an agency access token (they last ~24h; refresh tokens a year). */
