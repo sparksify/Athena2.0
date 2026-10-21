@@ -37,8 +37,8 @@ export { importDoNotContact, extractContacts, type DncImportSummary } from "./ou
 export { evaluateSendGates, windowOpen, localParts, type SendWindow, type GateResult } from "./outreach/gates";
 export { sendApprovedDraft, type SendOutcome } from "./outreach/send";
 export { handleEmailWebhook, type EmailWebhookEvent, type WebhookResult } from "./outreach/webhooks";
-export { draftOutreach, DRAFT_MODEL, type DraftResult } from "./outreach/drafting";
-export { approveDraft, rejectDraft } from "./outreach/approval";
+export { draftOutreach, DRAFT_MODEL, type DraftResult, type DraftRevision } from "./outreach/drafting";
+export { approveDraft, rejectDraft, rejectAndRewrite, MAX_REWRITES, type RewriteResult } from "./outreach/approval";
 export { runSendTick, outreachQueueCounts, type SendTickSummary } from "./outreach/scheduler";
 export {
   REPLY_CLASSES, ALL_CLASSIFICATIONS, CLASS_DESCRIPTIONS, AUTO_REPLY_CLASSES, AUTO_REPLY_THRESHOLD,

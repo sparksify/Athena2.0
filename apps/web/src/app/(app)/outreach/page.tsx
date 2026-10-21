@@ -22,7 +22,7 @@ export default async function OutreachPage() {
       supabase
         .from("outreach_draft")
         .select(
-          "id, subject, body_text, cited_attribute_ids, created_at, candidate(full_name, primary_email), angle(name), campaign(name)",
+          "id, subject, body_text, cited_attribute_ids, created_at, revision_of, candidate(full_name, primary_email), angle(name), campaign(name)",
         )
         .eq("status", "draft")
         .order("created_at", { ascending: true })
@@ -39,6 +39,12 @@ export default async function OutreachPage() {
 
   const counts = new Map<string, number>();
   for (const r of statusRows ?? []) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+  // The note each rewrite answers: the rejected draft it replaces carries it in blocked_reason.
+  const revisionIds = (pendingDrafts ?? []).map((d) => d.revision_of).filter((x): x is string => Boolean(x));
+  const { data: notes } = revisionIds.length
+    ? await supabase.from("outreach_draft").select("id, blocked_reason").in("id", revisionIds)
+    : { data: [] as { id: string; blocked_reason: string | null }[] };
+  const noteFor = new Map((notes ?? []).map((n) => [n.id, n.blocked_reason]));
   const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
   return (
@@ -96,6 +102,9 @@ export default async function OutreachPage() {
                       {camp?.name} · angle: {ang?.name} · cites {(d.cited_attribute_ids ?? []).length} fact
                       {(d.cited_attribute_ids ?? []).length === 1 ? "" : "s"} on record
                     </div>
+                    {d.revision_of && (
+                      <div className="mt-1 text-[11px] text-indigo-300">Rewrite · after note: “{noteFor.get(d.revision_of) ?? "—"}”</div>
+                    )}
                   </div>
                   <ReviewButtons draftId={d.id} />
                 </div>

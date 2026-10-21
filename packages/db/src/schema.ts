@@ -444,6 +444,7 @@ export const outreachDraft = pgTable(
     approvedBy: uuid("approved_by").references(() => appUser.id),
     agentJobId: uuid("agent_job_id").references(() => agentJob.id),
     sentMessageId: uuid("sent_message_id").references(() => message.id),
+    revisionOf: uuid("revision_of"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

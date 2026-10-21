@@ -23,6 +23,9 @@ export type DraftResult =
   | { drafted: true; draftId: string }
   | { drafted: false; reason: string };
 
+/** A rewrite request: the draft a reviewer rejected and what they said. */
+export interface DraftRevision { previousDraftId: string; previousSubject: string; previousBody: string; feedback: string; attempt: number }
+
 /**
  * Drafts one email for one candidate using ONLY provenance-backed facts
  * (candidate_attribute rows all carry source_record_id/agent_job_id by CHECK
@@ -33,7 +36,7 @@ export type DraftResult =
 export async function draftOutreach(
   db: EmitTx,
   llm: LlmGateway,
-  args: { orgId: string; campaignId: string; candidateId: string; angleId: string; agentJobId?: string },
+  args: { orgId: string; campaignId: string; candidateId: string; angleId: string; agentJobId?: string; revision?: DraftRevision },
 ): Promise<DraftResult> {
   const [cand] = await db
     .select({
@@ -118,7 +121,16 @@ export async function draftOutreach(
             `Candidate: ${cand.fullName ?? "unknown name"}${cand.city ? `, ${cand.city}, ${cand.state ?? ""}` : ""}`,
             "Known facts (cite by id):",
             factLines || "- (none)",
-            "Write the email.",
+            ...(args.revision
+              ? [
+                  "",
+                  `A reviewer rejected the previous draft (rewrite ${args.revision.attempt}). Previous subject: ${args.revision.previousSubject}`,
+                  "Previous body:",
+                  args.revision.previousBody,
+                  `Reviewer's note: ${args.revision.feedback}`,
+                  "Write a new version that fixes exactly what the note asks for and keeps what was already working. Same rules apply.",
+                ]
+              : ["Write the email."]),
           ].join("\n"),
         },
       ],
@@ -146,6 +158,7 @@ export async function draftOutreach(
         citedAttributeIds: cited,
         status: "draft",
         agentJobId: args.agentJobId,
+        revisionOf: args.revision?.previousDraftId ?? null,
       })
       .returning({ id: outreachDraft.id });
     if (!row) throw new Error("outreach_draft insert returned no row");
@@ -163,7 +176,7 @@ export async function draftOutreach(
       type: "outreach.drafted",
       entityType: "outreach_draft",
       entityId: row.id,
-      payload: { campaignId: args.campaignId, candidateId: args.candidateId, citedFacts: cited.length },
+      payload: { campaignId: args.campaignId, candidateId: args.candidateId, citedFacts: cited.length, revisionOf: args.revision?.previousDraftId ?? null, attempt: args.revision?.attempt ?? 0 },
     });
     return row.id;
   });

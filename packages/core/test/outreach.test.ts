@@ -6,7 +6,7 @@ import {
   emailVerification, event, identifier, interaction, mailbox, message, org, outreachDraft,
   sourceRecord, suppression,
 } from "@athena/db/schema";
-import { approveDraft, rejectDraft } from "../src/outreach/approval";
+import { approveDraft, MAX_REWRITES, rejectAndRewrite, rejectDraft } from "../src/outreach/approval";
 import { draftOutreach } from "../src/outreach/drafting";
 import { runSendTick } from "../src/outreach/scheduler";
 import { sendApprovedDraft } from "../src/outreach/send";
@@ -292,6 +292,47 @@ describe("drafting", () => {
     expect(mem!.status).toBe("drafted");
     const llmCosts = await db.select().from(costRecord).where(eq(costRecord.category, "llm"));
     expect(llmCosts).toHaveLength(1);
+  });
+
+  it("a rejection with a note rewrites from that note, and stops after MAX_REWRITES", async () => {
+    const s = await seed(db);
+    const prompts: string[] = [];
+    let n = 0;
+    const gateway = new LlmGateway({
+      name: "mock-llm",
+      complete: async (req: { messages: { content: string }[] }) => {
+        prompts.push(String(req.messages[0]!.content));
+        n += 1;
+        const json = { subject: `v${n}`, bodyText: `body ${n}`, citedFactIds: [] };
+        return { text: JSON.stringify(json), json, model: "mock", inputTokens: 1, outputTokens: 1, costUsd: 0 };
+      },
+    } as unknown as LlmProvider, db);
+    const first = await draftOutreach(db, gateway, { orgId: s.orgId, campaignId: s.campaignId, candidateId: s.candidateId, angleId: s.angleId });
+    expect(first.drafted).toBe(true);
+    let draftId = (first as { draftId: string }).draftId;
+
+    const r1 = await rejectAndRewrite(db, gateway, { orgId: s.orgId, draftId, userId: s.userId, reason: "too salesy, lead with the trade show" });
+    expect(r1).toMatchObject({ ok: true, rewritten: true, attempt: 1 });
+    expect(prompts.at(-1)).toContain("too salesy, lead with the trade show");
+    expect(prompts.at(-1)).toContain("body 1"); // the rejected text travels with the note
+    const [prev] = await db.select().from(outreachDraft).where(eq(outreachDraft.id, draftId));
+    expect(prev!.status).toBe("rejected");
+    expect(prev!.blockedReason).toBe("too salesy, lead with the trade show");
+    draftId = (r1 as { draftId: string }).draftId;
+    const [next] = await db.select().from(outreachDraft).where(eq(outreachDraft.id, draftId));
+    expect(next!.status).toBe("draft");
+    expect(next!.revisionOf).toBe(prev!.id);
+
+    for (let i = 2; i <= MAX_REWRITES; i++) {
+      const r = await rejectAndRewrite(db, gateway, { orgId: s.orgId, draftId, userId: s.userId, reason: `note ${i}` });
+      expect(r).toMatchObject({ ok: true, rewritten: true, attempt: i });
+      draftId = (r as { draftId: string }).draftId;
+    }
+    const last = await rejectAndRewrite(db, gateway, { orgId: s.orgId, draftId, userId: s.userId, reason: "still no" });
+    expect(last).toMatchObject({ ok: true, rewritten: false, reason: "max_rewrites" });
+    const live = await db.select().from(outreachDraft).where(and(eq(outreachDraft.candidateId, s.candidateId), eq(outreachDraft.status, "draft")));
+    expect(live).toHaveLength(0);
+    expect(n).toBe(1 + MAX_REWRITES);
   });
 
   it("skips suppressed candidates without spending tokens", async () => {
